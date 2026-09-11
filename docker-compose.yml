@@ -1,0 +1,53 @@
+# Production: the chat API behind Caddy, which gets and renews HTTPS
+# certificates automatically.
+#
+#   docker compose --env-file .env.production up -d --build
+#
+# Already running nginx on the server? Start only the API instead and use
+# deploy/nginx.conf:
+#
+#   docker compose --env-file .env.production up -d --build api
+#
+# See DEPLOY.md.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  api:
+    build: .
+    image: diginiwas-chat-api:latest
+    restart: unless-stopped
+    env_file: .env.production
+    # Bound to 127.0.0.1 only: Caddy reaches the API over the compose network,
+    # and a host nginx over localhost. Never exposed to the internet directly.
+    ports:
+      - "127.0.0.1:8000:8000"
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env.production and run compose with --env-file .env.production}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging: *logging
+
+volumes:
+  # Certificates live here. Keep this volume, or Caddy re-requests them and
+  # can hit Let's Encrypt rate limits.
+  caddy_data:
+  caddy_config:

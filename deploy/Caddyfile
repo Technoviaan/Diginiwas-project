@@ -1,0 +1,19 @@
+# HTTPS in front of the chat API. Caddy gets and renews the certificate for
+# {$DOMAIN} on its own; the domain's DNS must already point at this server
+# and ports 80 and 443 must be open.
+
+{$DOMAIN} {
+	reverse_proxy api:8000 {
+		# Send Server-Sent Events on as soon as they're written, instead of
+		# buffering the reply.
+		flush_interval -1
+	}
+
+	# Chat requests are small JSON bodies.
+	request_body {
+		max_size 64KB
+	}
+
+	header -Server
+	log
+}

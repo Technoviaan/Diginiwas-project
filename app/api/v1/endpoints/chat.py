@@ -1,0 +1,134 @@
+"""POST /v1/chat and POST /v1/chat/stream."""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import AsyncIterator
+from contextlib import aclosing
+from typing import Annotated
+
+from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from app.api.dependencies import AgentDep, SettingsDep
+from app.api.errors import http_error_for
+from app.api.v1 import openapi as docs
+from app.api.v1.schemas import (
+    ChatRequest,
+    ChatResponse,
+    DoneEvent,
+    ErrorEvent,
+    PropertiesEvent,
+    StatusEvent,
+    StreamEvent,
+    TokenEvent,
+    Usage,
+)
+from app.assistant import AgentEvent, PropertiesFound, Status, TextDelta, TokenUsage, TurnComplete
+from app.core.config import Settings
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["chat v1"])
+
+ChatBody = Annotated[ChatRequest, Body(openapi_examples=docs.CHAT_REQUEST_EXAMPLES)]
+
+
+class EventStreamResponse(StreamingResponse):
+    """A StreamingResponse that OpenAPI documents as text/event-stream."""
+
+    media_type = "text/event-stream"
+
+
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    summary="Send a message",
+    description=docs.CHAT,
+    responses={
+        200: {
+            "description": "The reply, and the cards to show under it.",
+            "headers": docs.VERSION_HEADERS,
+            "content": {"application/json": {"example": docs.CHAT_RESPONSE_EXAMPLE}},
+        },
+        **docs.CHAT_ERRORS,
+    },
+)
+async def chat(req: ChatBody, agent: AgentDep, settings: SettingsDep) -> ChatResponse:
+    result = await agent.run(req.session_id, req.message, system_prompt=_prompt_override(req, settings))
+    return ChatResponse(
+        session_id=req.session_id,
+        reply=result.reply,
+        properties=result.properties,
+        model=settings.model,
+        usage=_usage(result.usage),
+    )
+
+
+@router.post(
+    "/chat/stream",
+    response_class=EventStreamResponse,
+    summary="Send a message (streaming)",
+    description=docs.CHAT_STREAM,
+    responses={
+        200: {
+            "model": StreamEvent,
+            "description": "Server-Sent Events. Each `data:` line is one StreamEvent.",
+            "headers": docs.VERSION_HEADERS,
+            "content": {"text/event-stream": {"example": docs.SSE_EXAMPLE}},
+        },
+        403: docs.CHAT_ERRORS[403],
+        429: docs.CHAT_ERRORS[429],
+    },
+)
+async def chat_stream(
+    req: ChatBody, request: Request, agent: AgentDep, settings: SettingsDep
+) -> EventStreamResponse:
+    # Checked before the stream opens, so a refusal is a real 403.
+    system_prompt = _prompt_override(req, settings)
+
+    async def events() -> AsyncIterator[str]:
+        try:
+            stream = agent.stream(req.session_id, req.message, system_prompt=system_prompt)
+            async with aclosing(stream) as agent_events:
+                async for event in agent_events:
+                    yield _sse(_to_stream_event(event, req.session_id))
+                    if await request.is_disconnected():
+                        break
+        except Exception as exc:  # the 200 has already been sent: report the error in-band
+            logger.warning("Streaming turn failed", exc_info=exc)
+            yield _sse(ErrorEvent(type="error", message=http_error_for(exc).detail))
+
+    return EventStreamResponse(events(), headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+def _prompt_override(req: ChatRequest, settings: Settings) -> str | None:
+    if req.system_prompt is None:
+        return None
+    if not settings.allow_system_prompt_override:
+        raise HTTPException(status_code=403, detail="system_prompt overrides are disabled on this server.")
+    return req.system_prompt
+
+
+def _usage(usage: TokenUsage | None) -> Usage | None:
+    if usage is None:
+        return None
+    return Usage(input_tokens=usage.input_tokens, output_tokens=usage.output_tokens)
+
+
+def _to_stream_event(event: AgentEvent, session_id: str) -> BaseModel:
+    match event:
+        case Status(message=message):
+            return StatusEvent(type="status", message=message)
+        case PropertiesFound(cards=cards):
+            return PropertiesEvent(type="properties", properties=cards)
+        case TextDelta(text=text):
+            return TokenEvent(type="token", content=text)
+        case TurnComplete(usage=usage):
+            return DoneEvent(type="done", session_id=session_id, usage=_usage(usage))
+    raise TypeError(f"unexpected agent event: {event!r}")
+
+
+def _sse(event: BaseModel) -> str:
+    return f"data: {event.model_dump_json()}\n\n"

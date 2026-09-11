@@ -1,0 +1,13 @@
+# Keep secrets and local clutter out of the build context. The image only
+# copies requirements.lock and app/, but anything sent as context can leak
+# into a cache or a mistaken COPY.
+
+# Hidden files and folders: .env files, .git, .venv, tool caches and settings.
+.*
+venv/
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+deploy/
+docker-compose*.yml
+tests/
