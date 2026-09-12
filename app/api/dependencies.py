@@ -9,6 +9,7 @@ from fastapi import Depends, Request
 from app.assistant import ChatAgent, SessionStore
 from app.container import Services
 from app.core.config import Settings
+from app.insights import SnapshotService
 
 
 def get_services(request: Request) -> Services:
@@ -27,6 +28,11 @@ def get_sessions(services: Annotated[Services, Depends(get_services)]) -> Sessio
     return services.sessions
 
 
+def get_snapshots(services: Annotated[Services, Depends(get_services)]) -> SnapshotService:
+    return services.snapshots
+
+
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
+SnapshotsDep = Annotated[SnapshotService, Depends(get_snapshots)]
 AgentDep = Annotated[ChatAgent, Depends(get_agent)]
 SessionsDep = Annotated[SessionStore, Depends(get_sessions)]

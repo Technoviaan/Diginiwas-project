@@ -7,6 +7,7 @@ here are copied, so none of that can reach the model or a client.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from app.properties.models import PropertyCard
@@ -65,6 +66,7 @@ def to_card(raw: dict[str, Any], *, url_template: str | None = None) -> Property
         image=images[0] if images else None,
         images=images,
         url=url_template.format(id=listing_id) if url_template else None,
+        listed_on=_date(raw.get("createdAt")),
     )
 
 
@@ -83,6 +85,17 @@ def _number(value: Any) -> int | float | None:
     except (TypeError, ValueError):
         return None
     return int(number) if number.is_integer() else number
+
+
+def _date(value: Any) -> date | None:
+    """The day part of an ISO timestamp such as '2026-08-26T09:12:09.260Z'."""
+    text = _text(value)
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
 
 
 def _strings(values: Any) -> list[str]:

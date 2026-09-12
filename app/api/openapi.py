@@ -24,6 +24,10 @@ to show under the chat bubble.
 
 In the app, use `POST /{versions.LATEST}/chat/stream` so the reply appears as it's written.
 
+For a listing's **Property Snapshot** card — price comparison, rental yield, locality \
+trend and data confidence — call `GET /{versions.LATEST}/properties/{{property_id}}/snapshot` \
+with a card's `id`.
+
 ### Versioning
 Paths are versioned; `/{versions.LATEST}` is current. Versioned responses carry \
 `X-API-Version` and `X-API-Latest-Version` headers. A deprecated version also \
@@ -32,6 +36,10 @@ sends `Deprecation`, `Sunset` and `Link` headers. `GET /versions` lists them all
 
 OPENAPI_TAGS = [
     {"name": "chat v1", "description": "Talk to Niwas AI and manage conversations."},
+    {
+        "name": "property insights v1",
+        "description": "The Property Snapshot card: price, rent, trend and confidence for one listing.",
+    },
     {"name": "meta", "description": "Service health and API version discovery. Not versioned."},
 ]
 

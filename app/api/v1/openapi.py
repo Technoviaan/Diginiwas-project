@@ -7,6 +7,8 @@ tests/integration/test_openapi.py checks each one still validates.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from app.api.v1.schemas import ErrorResponse
@@ -153,6 +155,7 @@ CARD_EXAMPLE: dict[str, Any] = {
         f"{_IMG}/v1787725759/diginiwas/properties/images/property-1787725756828-402027751.jpg",
     ],
     "url": None,
+    "listed_on": "2026-08-26",
 }
 
 CHAT_RESPONSE_EXAMPLE: dict[str, Any] = {
@@ -254,3 +257,89 @@ CHAT_ERRORS: dict[int | str, dict[str, Any]] = {
 }
 
 SESSION_NOT_FOUND = _error("No conversation exists with that `session_id`.", "No such session.")
+
+# --------------------------------------------------------------------------- #
+# property snapshot
+# --------------------------------------------------------------------------- #
+
+SNAPSHOT = """\
+The data behind the **Niwas AI Property Snapshot** card for one listing: how its \
+price compares with similar homes, what it could rent for, how the locality's \
+prices have moved, and how far to trust all three.
+
+**Input:** only the listing ID in the path. No body.
+
+### Card → field
+
+| Card element | Big text | Small text | Details screen |
+| --- | --- | --- | --- |
+| Price Comparison | `price_comparison.headline` | `price_comparison.caption` | `basis`, `breakdown` |
+| Estimated Rental Yield | `rental_yield.headline` | `rental_yield.rent_scope` | `gross_percent`, `net_percent`, `assumptions`, `quote` |
+| Locality Trend | `locality_trend.headline` | `locality_trend.caption` | `quote`, `source_name`, `source_url` |
+| Data Confidence | `data_confidence.headline` | `data_confidence.caption` | `factors[].reason` |
+| See How This Was Calculated | | | `calculation[]` |
+| Updated … | `updated_on` | | |
+| Disclaimer | `disclaimer` | | |
+
+When a tile's `available` is `false`, show its `headline` ("Not enough data", \
+"Not available yet") instead of a number.
+
+### Where the figures come from
+
+- **Price comparison** — the median price per sqft of comparable live listings, \
+from the narrowest set holding at least 3: similar homes within `radius_km`, then \
+the same BHK in the locality, the whole locality, the same BHK in the city, the \
+whole city. `caption` names the set used.
+- **Rental yield** — a weighted median of comparable rentals (closer and more \
+recently listed ones count for more) × 12 ÷ price, gross and net. With fewer than \
+3 rentals, a locality's average rent quoted from web search.
+- **Locality trend** — quoted from web search when a page states one; nothing \
+records price history yet.
+- **Data confidence** — each figure's own confidence, weighted 50% / 30% / 20% \
+into Low, Medium or High. See `data_confidence.factors`.
+
+### Web-quoted figures
+
+A figure with `source: "web"` is a claim a property portal published, not a \
+DigiNiwas measurement. It is accepted only when it appears word for word in a \
+search result naming the locality and the city, and the amount is read by code, \
+never estimated by a language model. It always carries `quote`, `source_name`, \
+`source_url` and `confidence: "Low"` — **show the source next to the figure**. \
+Without a search key on the server, web-quoted figures are simply off.
+"""
+
+_EXAMPLES = Path(__file__).parent / "examples"
+
+
+def _example(name: str) -> dict[str, Any]:
+    return json.loads((_EXAMPLES / name).read_text(encoding="utf-8"))
+
+
+SNAPSHOT_EXAMPLES: dict[str, dict[str, Any]] = {
+    "own_data": {
+        "summary": "Well covered: figures from DigiNiwas listings",
+        "description": (
+            "12 comparable sales and 6 comparable rentals nearby, so price comparison and "
+            "rental yield are computed from them. No search provider is configured, so there "
+            "is no trend and no sources."
+        ),
+        "value": _example("snapshot_own_data.json"),
+    },
+    "web_quoted": {
+        "summary": "Sparse data: figures quoted from the web (DW-1003)",
+        "description": (
+            "One comparable sale and no rentals. The rent and the locality trend are quoted "
+            "from web pages, so they carry their source and quote, and confidence is Low."
+        ),
+        "value": _example("snapshot_web_quoted.json"),
+    },
+}
+
+LISTING_NOT_FOUND = _error("No live, verified listing has that ID.", "No listing with that ID.")
+LISTINGS_UNAVAILABLE = _error(
+    "The DigiNiwas listings API could not be reached.", "The listings service is unavailable."
+)
+LISTINGS_TIMEOUT = _error(
+    "The DigiNiwas listings API did not answer in time. Safe to retry.",
+    "The listings service timed out. Try again shortly.",
+)

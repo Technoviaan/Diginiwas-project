@@ -14,8 +14,8 @@ from typing import Any
 import httpx
 import openai
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessageChunk, BaseMessage
-from langchain_core.outputs import ChatGenerationChunk, ChatResult
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
+from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from pydantic import Field, PrivateAttr
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -23,6 +23,62 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def load_listings() -> list[dict[str, Any]]:
     return json.loads((FIXTURES / "properties.json").read_text())
+
+
+def make_listing(
+    listing_id: str,
+    *,
+    transaction_type: str = "Sale",
+    price: int = 6_000_000,
+    size: int = 1100,
+    bedrooms: str = "2",
+    locality: str = "Vijay Nagar",
+    city: str = "Indore",
+    latitude: float | None = 22.7533,
+    longitude: float | None = 75.8937,
+    furnishing: str = "Semi-Furnished",
+    **extra: Any,
+) -> dict[str, Any]:
+    """A raw listing like the API returns, for building comparable datasets."""
+    rental = transaction_type == "Rent"
+    listing: dict[str, Any] = {
+        "propertyId": listing_id,
+        "title": f"{bedrooms} BHK {'Rental ' if rental else ''}Property {listing_id}",
+        "transactionType": transaction_type,
+        "category": "Residential",
+        "propertyVerificationStatus": "Verified",
+        "price": price,
+        "propertySize": size,
+        "sizeUnit": "sqft",
+        "pricePerSqft": None if rental else round(price / size),
+        "bedrooms": bedrooms,
+        "bathrooms": bedrooms,
+        "locality": locality,
+        "city": city,
+        "latitude": latitude,
+        "longitude": longitude,
+        "furnishing": furnishing,
+    }
+    listing.update(extra)
+    return listing
+
+
+def google_search_transport(*titles: str) -> httpx.MockTransport:
+    """A Google Programmable Search API that returns one result per title."""
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        items = [
+            {
+                "title": title,
+                "link": f"https://news.test/{index}",
+                "snippet": f"{title} snippet",
+                "displayLink": "news.test",
+            }
+            for index, title in enumerate(titles)
+        ]
+        return httpx.Response(200, json={"items": items})
+
+    return httpx.MockTransport(handle)
 
 
 # --------------------------------------------------------------------------- #
@@ -87,7 +143,24 @@ class ScriptedChatModel(BaseChatModel):
     def _generate(
         self, messages: Any, stop: Any = None, run_manager: Any = None, **kwargs: Any
     ) -> ChatResult:
-        raise NotImplementedError("the agent only streams")
+        """One whole reply, for callers that don't stream."""
+        origin = self._origin or self
+        origin.requests.append(list(messages))
+        step = origin.script.pop(0) if origin.script else Reply("(end of script)")
+        if isinstance(step, Raise):
+            raise step.error
+        if isinstance(step, ToolCalls):
+            message = AIMessage(
+                content="",
+                tool_calls=[
+                    {"name": name, "args": args, "id": f"call_{index}"}
+                    for index, (name, args) in enumerate(step.calls)
+                ],
+                usage_metadata=USAGE_PER_CALL,
+            )
+        else:
+            message = AIMessage(content=step.text, usage_metadata=USAGE_PER_CALL)
+        return ChatResult(generations=[ChatGeneration(message=message)])
 
     def _stream(self, messages: Any, stop: Any = None, run_manager: Any = None, **kwargs: Any):
         origin = self._origin or self

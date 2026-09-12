@@ -1,0 +1,131 @@
+{
+  "property_id": "DW-2041",
+  "title": "2 BHK Apartment in Vijay Nagar",
+  "locality": "Vijay Nagar",
+  "city": "Indore",
+  "price": 6000000,
+  "price_label": "₹60 L",
+  "transaction_type": "Sale",
+  "price_comparison": {
+    "difference_percent": -3.0,
+    "direction": "below",
+    "headline": "3% below",
+    "caption": "similar 2 BHK homes within 3 km",
+    "listing_price_per_sqft": 5455,
+    "median_price_per_sqft": 5623,
+    "sample_size": 12,
+    "basis": "₹5,455 per sqft against a median of ₹5,623 across 12 comparable listings (similar 2 BHK homes within 3 km).",
+    "breakdown": [
+      {
+        "scope": "similar_nearby",
+        "label": "similar 2 BHK homes within 3 km",
+        "median_price_per_sqft": 5623,
+        "difference_percent": -3.0,
+        "direction": "below",
+        "sample_size": 12
+      }
+    ],
+    "confidence": "High"
+  },
+  "rental_yield": {
+    "available": true,
+    "headline": "4.9%–5.3%",
+    "low_percent": 4.9,
+    "high_percent": 5.3,
+    "gross_percent": 5.0,
+    "net_percent": 4.1,
+    "estimated_monthly_rent": 25000,
+    "estimated_annual_rent": 300000,
+    "annual_expenses": 55000,
+    "assumptions": [
+      "1 month a year without a tenant (₹25k of rent).",
+      "Maintenance of ₹2.5k a month, as listed, paid by the owner (₹30k a year).",
+      "Property tax, insurance and repairs are not deducted: the listing doesn't say what they are."
+    ],
+    "sample_size": 6,
+    "rent_scope": "similar 2 BHK rentals within 3 km",
+    "basis": "Weighted median rent of 6 comparable rentals (₹25k/month); closer and more recently listed ones count for more.",
+    "source": "listings",
+    "source_name": null,
+    "source_url": null,
+    "quote": null,
+    "confidence": "Medium"
+  },
+  "locality_trend": {
+    "available": false,
+    "yearly_percent": null,
+    "total_percent": null,
+    "years": null,
+    "headline": "Not available yet",
+    "caption": "Needs price history",
+    "reason": "Locality price history is not recorded yet, so a yearly trend cannot be measured from DigiNiwas listings.",
+    "source": null,
+    "source_name": null,
+    "source_url": null,
+    "quote": null,
+    "period": null,
+    "confidence": null
+  },
+  "data_confidence": {
+    "level": "Medium",
+    "headline": "Medium",
+    "caption": "18 comparable listings",
+    "comparable_listings": 18,
+    "score": 2.3,
+    "factors": [
+      {
+        "figure": "price_comparison",
+        "level": "High",
+        "weight": 0.5,
+        "reason": "Price comparison: 12 comparable listings (similar 2 BHK homes within 3 km)."
+      },
+      {
+        "figure": "rental_yield",
+        "level": "Medium",
+        "weight": 0.3,
+        "reason": "Rental yield: 6 comparable rentals nearby."
+      },
+      {
+        "figure": "locality_trend",
+        "level": "Low",
+        "weight": 0.2,
+        "reason": "Locality trend: not available yet."
+      }
+    ],
+    "reasons": [
+      "Price comparison: 12 comparable listings (similar 2 BHK homes within 3 km).",
+      "Rental yield: 6 comparable rentals nearby.",
+      "Locality trend: not available yet."
+    ]
+  },
+  "calculation": [
+    {
+      "title": "Comparable listings",
+      "detail": "Live, verified listings within 3 km of this one in Vijay Nagar, with the same 2 BHK and a similar size to 1100 sqft: 12 for sale, 6 on rent."
+    },
+    {
+      "title": "Price comparison",
+      "detail": "₹5,455 per sqft against a median of ₹5,623 across 12 comparable listings (similar 2 BHK homes within 3 km)."
+    },
+    {
+      "title": "Rental yield",
+      "detail": "Weighted median rent of 6 comparable rentals (₹25k/month); closer and more recently listed ones count for more. Gross yield: annual rent ₹3 L ÷ price ₹60 L × 100 = 5.0%. Net yield: annual rent less ₹55k of expenses, ÷ price × 100 = 4.1%."
+    },
+    {
+      "title": "Outliers",
+      "detail": "Values far outside the middle half of the sample are dropped before the median is taken, so one mistyped listing cannot move the figures."
+    },
+    {
+      "title": "Locality trend",
+      "detail": "Locality price history is not recorded yet, so a yearly trend cannot be measured from DigiNiwas listings."
+    },
+    {
+      "title": "Data confidence",
+      "detail": "Each figure is rated High, Medium or Low by how much close, own-market data it rests on (price comparison High, rental yield Medium, locality trend Low). Scored 3, 2 and 1 and weighted 50% price comparison, 30% rental yield, 20% locality trend, they average 2.3 out of 3: 2.5 or more is High, 1.75 or more Medium, anything lower Low."
+    }
+  ],
+  "locality_sources": [],
+  "radius_km": 3.0,
+  "updated_on": "2026-09-13",
+  "disclaimer": "Estimates are based on available listings and locality data. Actual rent and property value may vary."
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from pydantic import BaseModel, Field
 
@@ -73,6 +74,7 @@ class PropertyCard(BaseModel):
             "`PROPERTY_URL_TEMPLATE`; then build the link from `id`."
         ),
     )
+    listed_on: date | None = Field(None, description="The day the listing was created.")
 
 
 @dataclass(frozen=True, slots=True)

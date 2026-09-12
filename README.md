@@ -337,8 +337,155 @@ returns **403** unless `ALLOW_SYSTEM_PROMPT_OVERRIDE=true`.
 | `POST` | `/v1/chat/stream` | Same turn as SSE |
 | `GET` | `/v1/sessions/{id}/history` | User messages and assistant replies |
 | `DELETE` | `/v1/sessions/{id}` | Forget a conversation |
+| `GET` | `/v1/properties/{id}/snapshot` | Price, yield and confidence for one listing |
 | `GET` | `/health` | Liveness *(unversioned)* |
 | `GET` | `/versions` | Versions and sunset dates *(unversioned)* |
+
+## Property snapshot
+
+`GET /v1/properties/{id}/snapshot` returns the data behind the **Niwas AI
+Property Snapshot** card: how a listing's price compares with similar ones
+nearby, its estimated rental yield, and how much the numbers can be trusted.
+
+Comparables are live, verified listings of the same transaction type and
+bedroom count, of a similar size, within `COMPARABLE_RADIUS_KM` (3 km by
+default). Listings without coordinates fall back to matching by locality
+name.
+
+| Card tile | Field | How it's worked out |
+| --- | --- | --- |
+| Price Comparison | `price_comparison` | This listing's ₹/sqft against the **median** of comparable listings |
+| Estimated Rental Yield | `rental_yield` | Median rent of comparable rentals × 12 ÷ this price, shown as the middle-half range |
+| Locality Trend | `locality_trend` | **Always `available: false`** — see below |
+| Data Confidence | `data_confidence` | How many comparables were found, and whether coordinates were available |
+| "See How This Was Calculated" | `calculation` | One plain-language line per figure |
+
+Three deliberate choices:
+
+- **No language model touches these numbers.** They are arithmetic over
+  DigiNiwas listings, so they are reproducible and explainable.
+- **A figure the data can't support is returned as unavailable,** with a
+  reason, rather than estimated. Rental yield needs at least 3 comparable
+  rentals; below that it says so.
+- **Outliers are dropped** before any median (values outside 1.5× the
+  interquartile range), so one rent typed as a yearly figure can't move the
+  result.
+
+### Data confidence
+
+Only `Low`, `Medium` or `High`, worked out from how far each figure on the
+card rests on close, DigiNiwas-own data — not from a raw listing count.
+
+| Figure | High | Medium | Low | Weight |
+| --- | --- | --- | --- | --- |
+| Price comparison | 10+ similar homes nearby, or same BHK in the locality | 3+ of those, or 10+ in the locality | fewer, or only a city-wide set | 50% |
+| Rental yield | 10+ comparable rentals | 5+ | 3–4, a web-quoted rent, or none | 30% |
+| Locality trend | — | — | web-quoted, or not available | 20% |
+
+The levels score 3, 2 and 1 and are averaged with those weights: **2.5 or more
+is High, 1.75 or more Medium, anything lower Low**. A listing without
+coordinates is never High. A rental listing has no yield, so the other two
+weights are used alone. `factors` gives each figure's level and reason, and
+the "Data confidence" calculation step spells the working out.
+
+| Example | Score | Level |
+| --- | --- | --- |
+| 1 comparable sale, no rentals, no trend | 1.0 | Low |
+| 12 nearby sales, 6 rentals, web trend | 2.3 | Medium |
+| 12 nearby sales, 12 rentals, web trend | 2.6 | High |
+| 12 sales but all city-wide, 12 rentals | 1.6 | Low |
+
+### Rental yield
+
+```
+gross % = estimated monthly rent × 12 ÷ price × 100
+net %   = (annual rent − vacancy − listed maintenance) ÷ price × 100
+```
+
+**The rent** is a weighted median of comparable rentals: same BHK, similar
+size, within the radius. Each counts for how close a match it is × how
+recently it was listed:
+
+| Listed | Weight |
+| --- | --- |
+| within 1 year | 0.5 |
+| 1–2 years ago | 0.3 |
+| 2–3 years ago | 0.2 |
+| over 3 years ago | ignored |
+
+The listings API returns live listings only, not rent history, so "recent"
+means recently *listed*.
+
+**Net yield** assumes `RENTAL_VACANCY_MONTHS` (1 by default) without a tenant
+and the owner paying the listing's own maintenance charge. Property tax,
+insurance and repairs aren't in the data, so they aren't deducted.
+`assumptions` states all of this, and should be shown with the figure.
+
+**When fewer than 3 comparable rentals qualify**, the rent is a locality
+average quoted from web search (`WEB_RENT_ENABLED`, on once a search key is
+set). Accepted only if the snippet says "average" or "median", names the
+locality and the city, contains the amount, and the implied gross yield is
+1–12%. A single listing's rent ("The rent is ₹6,000 per month") is refused.
+It comes back with `source: "web"`, its `quote`, its `rent_scope` — usually
+all property types — and `confidence: "Low"`. No search runs when the
+listings are enough.
+
+### Locality trend
+
+A 3-year trend needs prices from 3 years ago, and the listings API holds only
+what is live today. Two sources are possible, and `locality_trend.source` says
+which one a figure came from.
+
+**`listings` — measured (not built yet).** Record the median ₹/sqft per
+locality and bedroom count every month, and the trend becomes arithmetic over
+your own data. Nothing records it today, so this never appears yet. Other
+free sources of real history worth importing: state **collector guideline
+rates** (published yearly per locality) and **NHB RESIDEX** (a city-level
+index, quarterly since 2017).
+
+**`web` — quoted; on whenever a search key is set** (`WEB_TREND_ENABLED=false` hides it).
+the server searches for the locality and asks the model to report a trend
+*only if a snippet plainly states one*. It is a citation, not a measurement,
+so the guardrails are enforced in code, not left to the model:
+
+1. the quote must appear **verbatim** in a snippet — the model cannot invent
+   a number;
+2. that snippet must name both the locality and the city ("Vijay Nagar"
+   exists in several Indian cities);
+3. the value must be plausible for a yearly change (−30% to +50%);
+4. anything that fails is discarded and the tile says "Not available yet".
+
+What comes back carries `quote`, `source_url`, `period` and
+`confidence: "Low"`. **Show the quote and the source next to it**, and don't
+give it the same visual weight as the computed figures: it is a web page's
+claim, usually an asking-price aggregate, and search results change week to
+week. Figures are cached for 7 days so the card doesn't flicker.
+
+### Locality sources
+
+`locality_sources` holds web pages about the locality from web search, shown
+as links for the reader. They never feed a computed figure.
+
+The list is empty unless the chosen provider is configured. Results are cached
+for 24 hours per query, and a search failure never fails the snapshot.
+
+### Search provider
+
+`SEARCH_PROVIDER` chooses where locality sources and quoted trends come from.
+Switching is one line in `.env`; nothing else changes.
+
+| Provider | Settings | Free tier |
+| --- | --- | --- |
+| `serper` (default) | `SERPER_API_KEY` | 2,500 queries once, no card — Google's own results |
+| `google` | `GOOGLE_SEARCH_API_KEY` + `GOOGLE_SEARCH_ENGINE_ID` | 100 queries/day |
+| `brave` | `BRAVE_SEARCH_API_KEY` | none since Feb 2026; card required |
+
+Serper and Brave send their keys as request headers, so they can never appear
+in a logged URL. Check either provider end to end, without printing any key:
+
+```bash
+PYTHONPATH=. .venv/bin/python scripts/check_search.py Borkhera Kota
+```
 
 ## Versioning
 
@@ -373,6 +520,12 @@ Only breaking changes need a new version.
 | `PROPERTIES_API_TIMEOUT` | `60` | seconds; a sleeping Render instance is slow to wake |
 | `MAX_PROPERTY_RESULTS` | `6` | cards per search |
 | `PROPERTY_URL_TEMPLATE` | unset | e.g. `https://diginiwas.com/property/{id}` |
+| `COMPARABLE_RADIUS_KM` | `3.0` | how far out snapshot comparables are taken from |
+| `COMPARABLE_AREA_TOLERANCE` | `0.25` | a comparable's size may differ by this much |
+| `MAX_COMPARABLES` | `30` | closest matches kept per snapshot |
+| `GOOGLE_SEARCH_API_KEY` | unset | Custom Search API key, for locality source links |
+| `GOOGLE_SEARCH_ENGINE_ID` | unset | Programmable Search Engine `cx` |
+| `LOCALITY_SOURCES_LIMIT` | `3` | source links per snapshot |
 | `CORS_ORIGINS` | `["*"]` | lock down before deploying |
 | `RATE_LIMIT_PER_MINUTE` | `20` | chat messages per client IP; `0` turns it off |
 | `LOG_LEVEL` | `INFO` | |

@@ -7,6 +7,7 @@ upper case, e.g. `rate_limit_per_minute` by `RATE_LIMIT_PER_MINUTE`.
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -54,6 +55,38 @@ class Settings(BaseSettings):
     # Link for the card's "View Property" button, e.g.
     # "https://diginiwas.com/property/{id}". Unset -> `url` is null.
     property_url_template: str | None = None
+
+    # --- Property insights ---------------------------------------------------
+    # How far out to look for comparable listings.
+    comparable_radius_km: float = 3.0
+    # A comparable's size may differ from the subject's by this much.
+    comparable_area_tolerance: float = 0.25
+    # Closest matches kept per snapshot.
+    max_comparables: int = 30
+    # Which web search locality sources and quoted trends come from.
+    # "serper" needs only SERPER_API_KEY and returns Google's own results;
+    # "brave" needs only BRAVE_SEARCH_API_KEY; "google" needs the two below.
+    search_provider: Literal["google", "brave", "serper"] = "serper"
+    serper_api_key: str | None = None
+    brave_search_api_key: str | None = None
+    # Google Programmable Search, for locality source links. Both are needed,
+    # or the snapshot simply comes back without sources. The API key must have
+    # the Custom Search API enabled; the engine id is a search engine's `cx`.
+    google_search_api_key: str | None = None
+    google_search_engine_id: str | None = None
+    locality_sources_limit: int = 3
+    # Quote a locality trend from a web page found by search, when one states
+    # it plainly. The figure is someone else's claim rather than a
+    # measurement, so it ships with its quote, its source and "Low"
+    # confidence. Takes effect only once the search provider is configured;
+    # set to false to hide the trend while keeping locality sources.
+    web_trend_enabled: bool = True
+    # When fewer than 3 comparable rentals exist, quote a locality's average
+    # rent from a web page for the rental yield, labelled with its source and
+    # scope. Takes effect only once the search provider is configured.
+    web_rent_enabled: bool = True
+    # Months a year a rental is assumed to sit empty, for net rental yield.
+    rental_vacancy_months: float = 1.0
 
     # --- Server --------------------------------------------------------------
     cors_origins: list[str] = ["*"]

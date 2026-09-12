@@ -1,0 +1,151 @@
+{
+  "property_id": "DW-1003",
+  "title": "3 BHK Premium Apartment Indore",
+  "locality": "Vijay Nagar",
+  "city": "Indore",
+  "price": 8500000,
+  "price_label": "₹85 L",
+  "transaction_type": "Sale",
+  "price_comparison": {
+    "difference_percent": 0.0,
+    "direction": "in line",
+    "headline": "In line with",
+    "caption": "similar 3 BHK homes within 3 km",
+    "listing_price_per_sqft": 5152,
+    "median_price_per_sqft": 5152,
+    "sample_size": 1,
+    "basis": "₹5,152 per sqft against a median of ₹5,152 across 1 comparable listing (similar 3 BHK homes within 3 km).",
+    "breakdown": [
+      {
+        "scope": "similar_nearby",
+        "label": "similar 3 BHK homes within 3 km",
+        "median_price_per_sqft": 5152,
+        "difference_percent": 0.0,
+        "direction": "in line",
+        "sample_size": 1
+      }
+    ],
+    "confidence": "Low"
+  },
+  "rental_yield": {
+    "available": true,
+    "headline": "2.2%–2.7%",
+    "low_percent": 2.2,
+    "high_percent": 2.7,
+    "gross_percent": 2.5,
+    "net_percent": 1.8,
+    "estimated_monthly_rent": 17418,
+    "estimated_annual_rent": 209016,
+    "annual_expenses": 59418,
+    "assumptions": [
+      "1 month a year without a tenant (₹17.42k of rent).",
+      "Maintenance of ₹3.5k a month, as listed, paid by the owner (₹42k a year).",
+      "Property tax, insurance and repairs are not deducted: the listing doesn't say what they are.",
+      "The rent is an average over all property types, so a larger home may rent for more."
+    ],
+    "sample_size": 0,
+    "rent_scope": "all property types in Vijay Nagar",
+    "basis": "Too few comparable rentals on DigiNiwas, so this uses the average rent housing.com publishes for all property types in Vijay Nagar (₹17.42k/month), shown ±10%.",
+    "source": "web",
+    "source_name": "housing.com",
+    "source_url": "https://housing.com/rent/flats-for-rent-in-vijay-nagar-indore-Pyjnw07cuaadd6jv",
+    "quote": "The average rent in Vijay Nagar is Rs. 17,418 per month and property prices average Rs. 4,261 per sq ft.",
+    "confidence": "Low"
+  },
+  "locality_trend": {
+    "available": true,
+    "yearly_percent": 10.3,
+    "total_percent": 34.1,
+    "years": 3,
+    "headline": "+10.3% yearly",
+    "caption": "Past 3 years",
+    "reason": null,
+    "source": "web",
+    "source_name": "www.99acres.com",
+    "source_url": "https://www.99acres.com/property-rates-and-price-trends-in-vijay-nagar-indore-prffid",
+    "quote": "-3.4 % in the last 1 year, 34.1 % in the last 3 years",
+    "period": "Past 3 years",
+    "confidence": "Low"
+  },
+  "data_confidence": {
+    "level": "Low",
+    "headline": "Low",
+    "caption": "1 comparable listing",
+    "comparable_listings": 1,
+    "score": 1.0,
+    "factors": [
+      {
+        "figure": "price_comparison",
+        "level": "Low",
+        "weight": 0.5,
+        "reason": "Price comparison: 1 comparable listing (similar 3 BHK homes within 3 km)."
+      },
+      {
+        "figure": "rental_yield",
+        "level": "Low",
+        "weight": 0.3,
+        "reason": "Rental yield: too few comparable rentals nearby, so it uses a locality average quoted from the web (housing.com)."
+      },
+      {
+        "figure": "locality_trend",
+        "level": "Low",
+        "weight": 0.2,
+        "reason": "Locality trend: quoted from www.99acres.com, not measured from DigiNiwas listings."
+      }
+    ],
+    "reasons": [
+      "Price comparison: 1 comparable listing (similar 3 BHK homes within 3 km).",
+      "Rental yield: too few comparable rentals nearby, so it uses a locality average quoted from the web (housing.com).",
+      "Locality trend: quoted from www.99acres.com, not measured from DigiNiwas listings."
+    ]
+  },
+  "calculation": [
+    {
+      "title": "Comparable listings",
+      "detail": "Live, verified listings within 3 km of this one in Vijay Nagar, with the same 3 BHK and a similar size to 1650 sqft: 1 for sale, 0 on rent."
+    },
+    {
+      "title": "Price comparison",
+      "detail": "₹5,152 per sqft against a median of ₹5,152 across 1 comparable listing (similar 3 BHK homes within 3 km)."
+    },
+    {
+      "title": "Rental yield",
+      "detail": "Too few comparable rentals on DigiNiwas, so this uses the average rent housing.com publishes for all property types in Vijay Nagar (₹17.42k/month), shown ±10%. Gross yield: annual rent ₹2.09 L ÷ price ₹85 L × 100 = 2.5%. Net yield: annual rent less ₹59.42k of expenses, ÷ price × 100 = 1.8%. Quoted from housing.com: \"The average rent in Vijay Nagar is Rs. 17,418 per month and property prices average Rs. 4,261 per sq ft.\""
+    },
+    {
+      "title": "Outliers",
+      "detail": "Values far outside the middle half of the sample are dropped before the median is taken, so one mistyped listing cannot move the figures."
+    },
+    {
+      "title": "Locality trend",
+      "detail": "Quoted from www.99acres.com: \"-3.4 % in the last 1 year, 34.1 % in the last 3 years\" This is a claim published on the web, not measured from DigiNiwas listings, so treat it as an indication only."
+    },
+    {
+      "title": "Data confidence",
+      "detail": "Each figure is rated High, Medium or Low by how much close, own-market data it rests on (price comparison Low, rental yield Low, locality trend Low). Scored 3, 2 and 1 and weighted 50% price comparison, 30% rental yield, 20% locality trend, they average 1.0 out of 3: 2.5 or more is High, 1.75 or more Medium, anything lower Low."
+    }
+  ],
+  "locality_sources": [
+    {
+      "title": "Property in Vijay Nagar Indore",
+      "url": "https://www.99acres.com/property-in-vijay-nagar-indore-ffid",
+      "snippet": "Read about Price trends, Property rates in Vijay Nagar ₹5,700/ sqft. The average price of 1 BHK property in Vijay Nagar is ₹ Rs 16L to ₹ 4.25Cr.",
+      "source": "www.99acres.com"
+    },
+    {
+      "title": "Property for Sale in Vijay Nagar, Indore",
+      "url": "https://www.magicbricks.com/property-for-sale-in-vijay-nagar-indore-pppfs",
+      "snippet": "The price of a 3 BHK flat in Vijay Nagar Indore ranges from ₹ 12.6 lakhs to ₹ 5.37 Cr, land prices in Vijay Nagar ranges between ₹ 1,492 - ₹ 14,711 per sq.ft.",
+      "source": "www.magicbricks.com"
+    },
+    {
+      "title": "Property Rates in Vijay Nagar, Indore - 2026",
+      "url": "https://housing.com/price-trends/property-rates-for-buy-in-vijay_nagar_indore-Pyjnw07cuaadd6jv",
+      "snippet": "Property rates in Vijay Nagar have 6.98% rise in the last 1 year. Starting price of properties in Vijay Nagar is Rs. 356 per sqft and the average price of ...",
+      "source": "housing.com"
+    }
+  ],
+  "radius_km": 3.0,
+  "updated_on": "2026-09-13",
+  "disclaimer": "Estimates are based on available listings and locality data. Actual rent and property value may vary."
+}
