@@ -20,12 +20,21 @@ from app.api.v1.schemas import (
     DoneEvent,
     ErrorEvent,
     PropertiesEvent,
+    SourcesEvent,
     StatusEvent,
     StreamEvent,
     TokenEvent,
     Usage,
 )
-from app.assistant import AgentEvent, PropertiesFound, Status, TextDelta, TokenUsage, TurnComplete
+from app.assistant import (
+    AgentEvent,
+    PropertiesFound,
+    SourcesFound,
+    Status,
+    TextDelta,
+    TokenUsage,
+    TurnComplete,
+)
 from app.core.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -48,7 +57,7 @@ class EventStreamResponse(StreamingResponse):
     description=docs.CHAT,
     responses={
         200: {
-            "description": "The reply, and the cards to show under it.",
+            "description": "The reply, and the cards and source links to show under it.",
             "headers": docs.VERSION_HEADERS,
             "content": {"application/json": {"example": docs.CHAT_RESPONSE_EXAMPLE}},
         },
@@ -61,6 +70,7 @@ async def chat(req: ChatBody, agent: AgentDep, settings: SettingsDep) -> ChatRes
         session_id=req.session_id,
         reply=result.reply,
         properties=result.properties,
+        sources=result.sources,
         model=settings.model,
         usage=_usage(result.usage),
     )
@@ -123,6 +133,8 @@ def _to_stream_event(event: AgentEvent, session_id: str) -> BaseModel:
             return StatusEvent(type="status", message=message)
         case PropertiesFound(cards=cards):
             return PropertiesEvent(type="properties", properties=cards)
+        case SourcesFound(sources=sources):
+            return SourcesEvent(type="sources", sources=sources)
         case TextDelta(text=text):
             return TokenEvent(type="token", content=text)
         case TurnComplete(usage=usage):

@@ -31,6 +31,7 @@ from app.assistant.cards import cards_mentioned, dedupe
 from app.assistant.events import (
     AgentEvent,
     PropertiesFound,
+    SourcesFound,
     Status,
     TextDelta,
     TokenUsage,
@@ -39,13 +40,18 @@ from app.assistant.events import (
 from app.assistant.memory import SessionStore, recent_window
 from app.assistant.messages import extract_text
 from app.assistant.prompts import SYSTEM_PROMPT
+from app.assistant.tools.area_rates import TOOL_NAME as AREA_RATES
 from app.assistant.tools.property_search import TOOL_NAME as PROPERTY_SEARCH
+from app.insights.models import LocalitySource
 from app.properties import PropertyCard
 
 logger = logging.getLogger(__name__)
 
 # What the app shows while a tool runs.
-STATUS_BY_TOOL = {PROPERTY_SEARCH: "Searching verified DigiNiwas listings…"}
+STATUS_BY_TOOL = {
+    PROPERTY_SEARCH: "Searching verified DigiNiwas listings…",
+    AREA_RATES: "Checking published area rates…",
+}
 
 
 @dataclass
@@ -54,6 +60,7 @@ class TurnResult:
 
     reply: str
     properties: list[PropertyCard] = field(default_factory=list)
+    sources: list[LocalitySource] = field(default_factory=list)
     usage: TokenUsage | None = None
 
 
@@ -134,19 +141,17 @@ class ChatAgent:
                 messages.extend(tool_messages)
                 turn.extend(tool_messages)
 
-                # Parallel searches in one round (e.g. comparing two localities)
-                # are merged; an artifact of None means that search failed.
-                succeeded = [result for result in tool_messages if result.artifact is not None]
-                if succeeded:
+                # Parallel tool calls in one round (e.g. comparing two localities)
+                # are merged; an artifact of None means that tool failed.
+                artifacts = [result.artifact for result in tool_messages if result.artifact is not None]
+                if artifacts:
                     searched = True
                     yield PropertiesFound(
-                        dedupe(
-                            card
-                            for result in succeeded
-                            for card in result.artifact
-                            if isinstance(card, PropertyCard)
-                        )
+                        dedupe(card for artifact in artifacts for card in _cards_in(artifact))
                     )
+                    sources = [source for artifact in artifacts for source in _sources_in(artifact)]
+                    if sources:
+                        yield SourcesFound(sources)
 
             if not searched:
                 # The model may answer from listings found earlier in the
@@ -184,6 +189,8 @@ class ChatAgent:
                         parts.append(text)
                     case PropertiesFound(cards=cards):
                         result.properties = cards
+                    case SourcesFound(sources=sources):
+                        result.sources = sources
                     case TurnComplete(usage=usage):
                         result.usage = usage
         result.reply = "".join(parts)
@@ -208,3 +215,14 @@ class ChatAgent:
                 tool_call_id=call["id"],
                 status="error",
             )
+
+
+def _cards_in(artifact: object) -> list[PropertyCard]:
+    """Cards in a tool's artifact: a list of them, or an object with `.cards`."""
+    items = artifact if isinstance(artifact, list) else getattr(artifact, "cards", [])
+    return [item for item in items if isinstance(item, PropertyCard)]
+
+
+def _sources_in(artifact: object) -> list[LocalitySource]:
+    """Source links in a tool's artifact, when it has any."""
+    return [item for item in getattr(artifact, "sources", []) if isinstance(item, LocalitySource)]

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.insights.models import LocalitySource
 from app.properties import PropertyCard
 
 
@@ -31,6 +32,13 @@ class PropertiesFound:
 
 
 @dataclass(frozen=True, slots=True)
+class SourcesFound:
+    """Web pages the reply quotes figures from. A later one in the same turn replaces an earlier one."""
+
+    sources: list[LocalitySource]
+
+
+@dataclass(frozen=True, slots=True)
 class TextDelta:
     """A piece of the reply's text."""
 
@@ -44,4 +52,4 @@ class TurnComplete:
     usage: TokenUsage | None
 
 
-type AgentEvent = Status | PropertiesFound | TextDelta | TurnComplete
+type AgentEvent = Status | PropertiesFound | SourcesFound | TextDelta | TurnComplete

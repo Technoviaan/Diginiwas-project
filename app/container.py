@@ -2,7 +2,8 @@
 
 This is the only place that decides which implementation backs each part:
 OpenAI for the model, the DigiNiwas HTTP API for listings, process memory
-for sessions. Everything else receives its collaborators.
+for sessions, a search provider for the web. Everything else receives its
+collaborators.
 """
 
 from __future__ import annotations
@@ -15,15 +16,17 @@ from langchain_core.language_models import BaseChatModel
 from app.assistant import ChatAgent, InMemorySessionStore, SessionStore
 from app.assistant.llm import build_chat_model
 from app.assistant.prompts import SYSTEM_PROMPT
-from app.assistant.tools import build_property_search_tool
+from app.assistant.tools import build_area_rates_tool, build_property_search_tool
 from app.core.config import Settings
 from app.insights import (
+    AreaRateFinder,
     ComparablesFinder,
     LocalitySearch,
     SnapshotService,
     WebRentEstimator,
     WebTrendEstimator,
 )
+from app.insights.rates import AREA_RATE_RESULTS
 from app.insights.websearch import build_locality_search
 from app.properties import PropertiesClient
 
@@ -36,6 +39,7 @@ class Services:
     agent: ChatAgent
     snapshots: SnapshotService
     locality_search: LocalitySearch
+    rates_search: LocalitySearch
 
     @classmethod
     def build(
@@ -49,7 +53,7 @@ class Services:
         """Wire the real implementations.
 
         `chat_model`, `properties_transport` and `search_transport` replace
-        OpenAI, the listings API and Google search - tests use them - while
+        OpenAI, the listings API and web search - tests use them - while
         everything else stays real.
         """
         sessions = InMemorySessionStore(max_sessions=settings.max_sessions)
@@ -68,15 +72,30 @@ class Services:
             if chat_model is not None
             else build_chat_model(settings.model_copy(update={"temperature": 0.0}))
         )
+
+        locality_search = build_locality_search(settings, transport=search_transport)
+        # Area rates read more results: the page with an area-wide rate often
+        # ranks below listing pages.
+        rates_search = build_locality_search(
+            settings.model_copy(update={"locality_sources_limit": AREA_RATE_RESULTS}),
+            transport=search_transport,
+        )
+
         agent = ChatAgent(
             chat_model=model,
-            tools=[build_property_search_tool(properties, page_size=settings.max_property_results)],
+            tools=[
+                build_property_search_tool(properties, page_size=settings.max_property_results),
+                build_area_rates_tool(
+                    properties,
+                    AreaRateFinder(rates_search, extractor, enabled=settings.area_rates_enabled),
+                    page_size=settings.max_property_results,
+                ),
+            ],
             sessions=sessions,
             system_prompt=settings.system_prompt or SYSTEM_PROMPT,
             history_window=settings.history_window,
             max_tool_rounds=settings.max_tool_rounds,
         )
-        locality_search = build_locality_search(settings, transport=search_transport)
         snapshots = SnapshotService(
             properties,
             ComparablesFinder(
@@ -103,8 +122,10 @@ class Services:
             agent=agent,
             snapshots=snapshots,
             locality_search=locality_search,
+            rates_search=rates_search,
         )
 
     async def aclose(self) -> None:
         await self.properties.aclose()
         await self.locality_search.aclose()
+        await self.rates_search.aclose()

@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field
 
+from app.insights.models import LocalitySource
 from app.properties import PropertyCard
 
 
@@ -50,6 +51,13 @@ class ChatResponse(BaseModel):
         description=(
             "Cards to render under the bubble, in order: the listings this reply is "
             "about. Empty when the reply isn't about any listing."
+        ),
+    )
+    sources: list[LocalitySource] = Field(
+        default_factory=list,
+        description=(
+            "Pages the reply quotes figures from, such as published area price rates. Show them "
+            "as links under the bubble; `snippet` holds the exact quote. Empty for most replies."
         ),
     )
     model: str = Field(..., description="The model that generated the reply.")

@@ -311,6 +311,38 @@ again. If a client disconnects mid-turn, only the user message and any text
 already shown are saved; a dangling tool call would make the next request
 fail.
 
+## Area price rates
+
+Ask the chatbot *"What is the average land price in Vijay Nagar, Indore?"* and
+it calls `lookup_area_rates`
+([`app/assistant/tools/area_rates.py`](app/assistant/tools/area_rates.py)),
+which combines two things:
+
+- **DigiNiwas' own listings** in that area — Plot/Land for land, Residential
+  for flats — returned as `properties` cards, with a median price per sq ft
+  once there are 3 or more;
+- **the rates property portals publish**, found by web search and checked by
+  [`app/insights/rates.py`](app/insights/rates.py).
+
+Search results mix area-wide rates with single listings, so a published rate
+is accepted only if code confirms that:
+
+- the quote appears word for word in a result naming the locality and city;
+- it reads as an area rate (average, range, rates, around…), so one listing's
+  "₹2.6 Cr. ₹13,000 /sqft" is refused;
+- it is about what was asked — land and plots, or flats;
+- every amount is in the quote, and code reads it;
+- it names exactly one unit — sq yd, sq m and acres are converted to per sq ft,
+  a bigha is kept as written because its size differs by state;
+- the rate is plausible.
+
+A government registry rate is labelled "registry rate". Every accepted figure
+comes back in the chat response's `sources` (and a `sources` stream event),
+with the exact quote in `snippet`. The prompt requires the reply to name the
+source of each figure, give ranges as ranges, and say plainly when nothing
+could be verified instead of guessing. Lookups are cached for 7 days per area
+and kind; switch the feature off with `AREA_RATES_ENABLED=false`.
+
 ## The prompt
 
 All of Niwas AI's behaviour is written in

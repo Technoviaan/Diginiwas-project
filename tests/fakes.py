@@ -18,6 +18,8 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from pydantic import Field, PrivateAttr
 
+from app.insights import AreaRate
+
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
@@ -267,6 +269,8 @@ def _matches(listing: dict[str, Any], params: httpx.QueryParams) -> bool:
         return False
     if (city := params.get("city")) and city.lower() != text("city"):
         return False
+    if (category := params.get("category")) and listing.get("category") != category:
+        return False
     if wanted := params.get("transactionType"):
         # The real backend treats Lease as Rent.
         actual = listing.get("transactionType")
@@ -278,3 +282,39 @@ def _matches(listing: dict[str, Any], params: httpx.QueryParams) -> bool:
     if (low := params.get("minPrice")) and price < float(low):
         return False
     return not ((high := params.get("maxPrice")) and price > float(high))
+
+
+# --------------------------------------------------------------------------- #
+# area rates
+# --------------------------------------------------------------------------- #
+
+
+HOUSING_PLOT_QUOTE = "The average price per sqft for Plots in Vijay Nagar, Indore is Rs. 11,048."
+
+
+def housing_plot_rate() -> AreaRate:
+    """A verified rate, as AreaRateFinder returns it for Vijay Nagar plots."""
+    return AreaRate(
+        kind="land",
+        basis="asking price",
+        unit="sqft",
+        average=11_048,
+        low=356,
+        high=22_987,
+        quote=HOUSING_PLOT_QUOTE,
+        title="639+ Residential Land / Plots for sale in Vijay Nagar, Indore",
+        source_name="housing.com",
+        source_url="https://housing.com/plots-in-vijay-nagar-indore",
+    )
+
+
+class StubAreaRateFinder:
+    """Stands in for AreaRateFinder: fixed rates, and a record of what it was asked."""
+
+    def __init__(self, rates: list[AreaRate] | None) -> None:
+        self.rates = rates
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def find(self, locality: str, city: str, kind: str) -> list[AreaRate] | None:
+        self.calls.append((locality, city, kind))
+        return self.rates

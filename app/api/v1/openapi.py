@@ -24,10 +24,17 @@ when it needs to, and responds once the reply is complete.
 **Render it as**
 - `reply` → the assistant's chat bubble (plain text, usually 1–2 sentences)
 - `properties` → property cards under the bubble, in order
+- `sources` → links under the bubble to the pages quoted figures came from; usually `[]`
 
 `properties` holds the listings the reply is about: from a search made in this \
 turn, or from earlier in the conversation for follow-ups such as *"compare them"*. \
 It is `[]` when the reply isn't about any listing.
+
+**Area price rates.** Questions such as *"average land price in Vijay Nagar, \
+Indore"* are answered from the rates property portals publish, plus DigiNiwas' \
+own listings there (as `properties`). Each published figure in the reply is in \
+`sources`, with the exact quote in `snippet` - show them. A figure is used only \
+when it appears word for word in a search result naming the locality and city.
 
 **Conversations.** Reuse the same `session_id` for follow-ups. Memory lives in \
 the server process and is cleared when it restarts.
@@ -50,6 +57,7 @@ Each event is one `data:` line holding a JSON object. The shapes are under \
 | --- | --- | --- |
 | `status` | a search starts | show a "searching" indicator |
 | `properties` | results arrive | render the cards, **replacing** cards sent earlier in this turn |
+| `sources` | published figures were found, e.g. area rates | show them as links, **replacing** sources sent earlier in this turn |
 | `token` | reply text is written | append it to the chat bubble |
 | `done` | the turn is complete | hide the indicator |
 | `error` | something failed after streaming began | show the message (sent instead of `done`) |
@@ -111,6 +119,14 @@ CHAT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
         "summary": "Ask about a listing ID",
         "value": {"message": "Tell me about DW-1003", "session_id": "user-42"},
     },
+    "area_rates": {
+        "summary": "Average land price in an area",
+        "description": "Answered from the rates property portals publish, with each figure's page in sources.",
+        "value": {
+            "message": "What is the average land price in Vijay Nagar, Indore?",
+            "session_id": "user-42",
+        },
+    },
 }
 
 _IMG = "https://res.cloudinary.com/dxw8erwq9/image/upload"
@@ -165,6 +181,7 @@ CHAT_RESPONSE_EXAMPLE: dict[str, Any] = {
         "at ₹85 L is the best fit because it offers premium amenities like a gym and swimming pool."
     ),
     "properties": [CARD_EXAMPLE],
+    "sources": [],
     "model": "gpt-4o-mini",
     "usage": {"input_tokens": 4230, "output_tokens": 73},
 }

@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from langchain_core.tools import BaseTool
@@ -104,10 +105,18 @@ def make_api(
     """Run the real app, wired by the real container, on the fake model and API."""
 
     @contextmanager
-    def make(*, raise_server_exceptions: bool = True, **overrides: Any) -> Iterator[TestClient]:
+    def make(
+        *,
+        raise_server_exceptions: bool = True,
+        search_transport: httpx.AsyncBaseTransport | None = None,
+        **overrides: Any,
+    ) -> Iterator[TestClient]:
         app_settings = settings.model_copy(update=overrides)
         services = Services.build(
-            app_settings, chat_model=model, properties_transport=properties_api.transport
+            app_settings,
+            chat_model=model,
+            properties_transport=properties_api.transport,
+            search_transport=search_transport,
         )
         app = create_app(app_settings, services=services)
         with TestClient(app, raise_server_exceptions=raise_server_exceptions) as client:

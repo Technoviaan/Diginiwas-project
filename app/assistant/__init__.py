@@ -1,12 +1,13 @@
 """Niwas AI itself: the agent loop, the model, its prompt, memory and tools.
 
-Depends on `app.properties`; knows nothing about HTTP.
+Depends on `app.properties` and `app.insights`; knows nothing about HTTP.
 """
 
 from app.assistant.agent import ChatAgent, TurnResult
 from app.assistant.events import (
     AgentEvent,
     PropertiesFound,
+    SourcesFound,
     Status,
     TextDelta,
     TokenUsage,
@@ -20,6 +21,7 @@ __all__ = [
     "InMemorySessionStore",
     "PropertiesFound",
     "SessionStore",
+    "SourcesFound",
     "Status",
     "TextDelta",
     "TokenUsage",

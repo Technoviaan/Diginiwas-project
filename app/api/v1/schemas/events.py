@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, RootModel
 
 from app.api.v1.schemas.chat import Usage
+from app.insights.models import LocalitySource
 from app.properties import PropertyCard
 
 
@@ -20,6 +21,13 @@ class PropertiesEvent(BaseModel):
 
     type: Literal["properties"]
     properties: list[PropertyCard]
+
+
+class SourcesEvent(BaseModel):
+    """Pages the reply quotes figures from. Show them as links. Replaces sources sent earlier in the turn."""
+
+    type: Literal["sources"]
+    sources: list[LocalitySource]
 
 
 class TokenEvent(BaseModel):
@@ -47,7 +55,7 @@ class ErrorEvent(BaseModel):
 class StreamEvent(
     RootModel[
         Annotated[
-            StatusEvent | PropertiesEvent | TokenEvent | DoneEvent | ErrorEvent,
+            StatusEvent | PropertiesEvent | SourcesEvent | TokenEvent | DoneEvent | ErrorEvent,
             Field(discriminator="type"),
         ]
     ]

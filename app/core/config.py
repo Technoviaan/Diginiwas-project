@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     web_rent_enabled: bool = True
     # Months a year a rental is assumed to sit empty, for net rental yield.
     rental_vacancy_months: float = 1.0
+    # Let the chatbot answer "what does land cost in <area>?" with the rates
+    # property portals publish, each checked and quoted with its source. Takes
+    # effect only once the search provider is configured.
+    area_rates_enabled: bool = True
 
     # --- Server --------------------------------------------------------------
     cors_origins: list[str] = ["*"]
