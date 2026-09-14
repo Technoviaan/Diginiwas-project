@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -41,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat v1"])
 
+SESSION_HEADER = "X-Session-ID"
+
 ChatBody = Annotated[ChatRequest, Body(openapi_examples=docs.CHAT_REQUEST_EXAMPLES)]
 
 
@@ -58,16 +61,21 @@ class EventStreamResponse(StreamingResponse):
     responses={
         200: {
             "description": "The reply, and the cards and source links to show under it.",
-            "headers": docs.VERSION_HEADERS,
+            "headers": {**docs.SESSION_HEADER, **docs.VERSION_HEADERS},
             "content": {"application/json": {"examples": docs.CHAT_RESPONSE_EXAMPLES}},
         },
         **docs.CHAT_ERRORS,
     },
 )
-async def chat(req: ChatBody, agent: AgentDep, settings: SettingsDep) -> ChatResponse:
-    result = await agent.run(req.session_id, req.message, system_prompt=_prompt_override(req, settings))
+async def chat(req: ChatBody, response: Response, agent: AgentDep, settings: SettingsDep) -> ChatResponse:
+    system_prompt = _prompt_override(req, settings)
+    session_id = _session_id(req)
+    response.headers[SESSION_HEADER] = session_id
+    result = await agent.run(
+        session_id, req.message, system_prompt=system_prompt, property_id=req.property_id
+    )
     return ChatResponse(
-        session_id=req.session_id,
+        session_id=session_id,
         reply=result.reply,
         properties=result.properties,
         sources=result.sources,
@@ -85,7 +93,7 @@ async def chat(req: ChatBody, agent: AgentDep, settings: SettingsDep) -> ChatRes
         200: {
             "model": StreamEvent,
             "description": "Server-Sent Events. Each `data:` line is one StreamEvent.",
-            "headers": docs.VERSION_HEADERS,
+            "headers": {**docs.SESSION_HEADER, **docs.VERSION_HEADERS},
             "content": {"text/event-stream": {"examples": docs.SSE_EXAMPLES}},
         },
         403: docs.CHAT_ERRORS[403],
@@ -97,20 +105,32 @@ async def chat_stream(
 ) -> EventStreamResponse:
     # Checked before the stream opens, so a refusal is a real 403.
     system_prompt = _prompt_override(req, settings)
+    session_id = _session_id(req)
 
     async def events() -> AsyncIterator[str]:
         try:
-            stream = agent.stream(req.session_id, req.message, system_prompt=system_prompt)
+            stream = agent.stream(
+                session_id, req.message, system_prompt=system_prompt, property_id=req.property_id
+            )
             async with aclosing(stream) as agent_events:
                 async for event in agent_events:
-                    yield _sse(_to_stream_event(event, req.session_id))
+                    yield _sse(_to_stream_event(event, session_id))
                     if await request.is_disconnected():
                         break
         except Exception as exc:  # the 200 has already been sent: report the error in-band
             logger.warning("Streaming turn failed", exc_info=exc)
             yield _sse(ErrorEvent(type="error", message=http_error_for(exc).detail))
 
-    return EventStreamResponse(events(), headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    # The header arrives before any event, so the app has the id even if the stream breaks.
+    return EventStreamResponse(
+        events(),
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", SESSION_HEADER: session_id},
+    )
+
+
+def _session_id(req: ChatRequest) -> str:
+    """The conversation to use: the one the caller named, or a new one."""
+    return req.session_id or str(uuid.uuid4())
 
 
 def _prompt_override(req: ChatRequest, settings: Settings) -> str | None:

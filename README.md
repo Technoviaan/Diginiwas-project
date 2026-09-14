@@ -136,6 +136,43 @@ Each reply has two parts, matching the chat UI:
 | Property card carousel under the bubble | `properties[]` |
 | "Searching…" shimmer | `status` event (streaming only) |
 
+### Sessions
+
+| Send | What happens |
+| --- | --- |
+| no `session_id`, `""` or `null` | a new chat starts; the server generates an id (a UUID) |
+| a `session_id` you got back earlier | the chat continues with its earlier messages |
+| any other `session_id`, e.g. `"user-42"` | used as is: a new chat under that id, or the existing one |
+
+When the user selects a property in the app, also send its ID as
+`property_id` with each message. *"How far is it from the airport?"* is then
+answered about that listing, with no need to say which one:
+
+```bash
+curl -s localhost:8000/v1/chat -H 'content-type: application/json' \
+  -d '{"message": "How far is it from the airport?", "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c", "property_id": "DW-1003"}'
+```
+
+The id comes back as `session_id` in the response (and `done` event), and in
+the `X-Session-ID` header, which the streaming endpoint sends before any event.
+Store it in the app and send it with every follow-up. Show an earlier chat
+with `GET /v1/sessions/{session_id}/history`; forget it with
+`DELETE /v1/sessions/{session_id}`.
+
+```bash
+# New chat: no session_id
+curl -s localhost:8000/v1/chat -H 'content-type: application/json' \
+  -d '{"message": "Show me homes for sale in Vijay Nagar"}'
+# -> {"session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c", "reply": "…", …}
+
+# Follow-up in the same chat
+curl -s localhost:8000/v1/chat -H 'content-type: application/json' \
+  -d '{"message": "Compare them", "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c"}'
+
+# Its history
+curl -s localhost:8000/v1/sessions/3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c/history
+```
+
 ### `POST /v1/chat`
 
 ```bash
@@ -227,11 +264,13 @@ data: {"type":"done","session_id":"u42","usage":{…}}
   HTTP status is already 200 by then.
 
 ```js
+// sessionId is null for a new chat; the server generates one.
 const res = await fetch("/v1/chat/stream", {
   method: "POST",
   headers: { "content-type": "application/json" },
-  body: JSON.stringify({ message, session_id }),
+  body: JSON.stringify({ message, session_id: sessionId }),
 });
+sessionId = res.headers.get("X-Session-ID"); // keep it for the next message
 
 const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
 let buffer = "";
@@ -348,7 +387,11 @@ and kind; switch the feature off with `AREA_RATES_ENABLED=false`.
 Ask *"Is Rau, Indore good for families?"* or *"How far is Vijay Nagar from the
 airport?"* and the chatbot calls `locality_guide`
 ([`app/assistant/tools/locality_guide.py`](app/assistant/tools/locality_guide.py))
-for schools, hospitals and connectivity. It searches the web once per topic,
+for schools, hospitals and connectivity. Asked about a listing instead —
+*"schools near DW-1003"*, or *"is the first one close to a hospital?"* after a
+search — the bot passes the listing's `property_id` (optional), the tool looks
+the listing up, and searches its locality and city; the listing's card comes
+back in `properties`. It searches the web once per topic,
 in parallel, and [`app/insights/guide.py`](app/insights/guide.py) accepts a
 place only if:
 

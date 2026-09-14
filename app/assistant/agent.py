@@ -88,13 +88,23 @@ class ChatAgent:
         self._answer_only_model = chat_model.bind_tools(list(tools), tool_choice="none")
 
     async def stream(
-        self, session_id: str, message: str, *, system_prompt: str | None = None
+        self,
+        session_id: str,
+        message: str,
+        *,
+        system_prompt: str | None = None,
+        property_id: str | None = None,
     ) -> AsyncIterator[AgentEvent]:
         """Run one turn, yielding events as they happen.
 
         Typically Status → PropertiesFound → TextDelta… → TurnComplete. A later
         PropertiesFound replaces an earlier one: if the model relaxes a filter
         and searches again, its reply is about the newer results.
+
+        `property_id` is the listing the user has selected in the app: "it" and
+        "this property" in the message mean that listing. The note saying so
+        goes to the model for this turn only; the saved turn keeps the user's
+        own words.
 
         Always consume this with `contextlib.aclosing`, so the turn is saved
         even when the consumer stops early.
@@ -104,6 +114,7 @@ class ChatAgent:
         messages: list[BaseMessage] = [
             SystemMessage(content=system_prompt or self._system_prompt),
             *recent_window(history, self._history_window),
+            *([SystemMessage(content=selected_property_note(property_id))] if property_id else []),
             human,
         ]
         turn: list[BaseMessage] = [human]
@@ -180,11 +191,19 @@ class ChatAgent:
             if saved:
                 await self._sessions.append(session_id, saved)
 
-    async def run(self, session_id: str, message: str, *, system_prompt: str | None = None) -> TurnResult:
+    async def run(
+        self,
+        session_id: str,
+        message: str,
+        *,
+        system_prompt: str | None = None,
+        property_id: str | None = None,
+    ) -> TurnResult:
         """The same turn, collected into one result."""
         result = TurnResult(reply="")
         parts: list[str] = []
-        async with aclosing(self.stream(session_id, message, system_prompt=system_prompt)) as events:
+        stream = self.stream(session_id, message, system_prompt=system_prompt, property_id=property_id)
+        async with aclosing(stream) as events:
             async for event in events:
                 match event:
                     case TextDelta(text=text):
@@ -217,6 +236,18 @@ class ChatAgent:
                 tool_call_id=call["id"],
                 status="error",
             )
+
+
+def selected_property_note(property_id: str) -> str:
+    """Tells the model which listing the user has selected in the app."""
+    return (
+        f"The user has selected the DigiNiwas listing {property_id} in the app. Unless their message "
+        f'clearly names a different listing or area, "it", "this property", "this flat", "the first '
+        f"one\" and similar mean {property_id}. Don't ask which property they mean. For schools, "
+        f"hospitals or connectivity near it, call locality_guide with property_id {property_id}; "
+        f"for its details, price or area rates, call search_properties with search {property_id} "
+        "first to learn about it."
+    )
 
 
 def _cards_in(artifact: object) -> list[PropertyCard]:

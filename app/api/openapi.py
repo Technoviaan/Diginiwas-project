@@ -18,9 +18,13 @@ DigiNiwas listings and answers with a short recommendation plus **property cards
 to show under the chat bubble.
 
 ### Quick start
-1. `POST /{versions.LATEST}/chat` with `{{"message": "…", "session_id": "user-42"}}`.
+1. `POST /{versions.LATEST}/chat` with `{{"message": "…"}}`. With no `session_id`, a new \
+chat starts and its generated `session_id` comes back in the response.
 2. Show `reply` in the chat bubble and each item in `properties` as a card.
-3. Send follow-ups with the same `session_id`.
+3. Send follow-ups with that `session_id` to continue the chat. While the user has a \
+property selected, also send its `id` as `property_id`, so *"how far is it from the \
+airport?"* is answered about that listing.
+4. Show a past chat with `GET /{versions.LATEST}/sessions/{{session_id}}/history`.
 
 In the app, use `POST /{versions.LATEST}/chat/stream` so the reply appears as it's written.
 

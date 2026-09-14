@@ -40,10 +40,20 @@ when it appears word for word in a search result naming the locality and city.
 is Vijay Nagar from the airport?"* are answered from the schools, hospitals, \
 stations and distances web pages list for the area. Each page used is in \
 `sources`, with the exact quotes in `snippet`. Social media is never read, and a \
-distance is used only when the page states it.
+distance is used only when the page states it. Ask about a listing - *"schools \
+near DW-1003"*, or *"is the first one close to a hospital?"* after a search - and \
+the listing is looked up to use its locality and city; its card comes back in \
+`properties`.
 
-**Conversations.** Reuse the same `session_id` for follow-ups. Memory lives in \
-the server process and is cleared when it restarts.
+**Selected property.** When the user has picked a listing in the app, send its \
+ID as `property_id` with each message. *"How far is it from the airport?"* or \
+*"Any schools nearby?"* is then answered about that listing without naming it.
+
+**Conversations.** To start a new chat, send no `session_id` (or an empty one): \
+the server generates one and returns it as `session_id` and in the `X-Session-ID` \
+header. Send that id with every follow-up to continue the same chat, and pass it \
+to `GET /v1/sessions/{session_id}/history` to show earlier messages. Memory lives \
+in the server process and is cleared when it restarts.
 
 **When listings can't be loaded** the response is still `200`, and the reply \
 tells the user. The error codes below come from the request itself or from the \
@@ -71,6 +81,12 @@ Each event is one `data:` line holding a JSON object. The shapes are under \
 For follow-ups about listings from earlier in the conversation, `properties` \
 arrives **after** the tokens.
 
+The conversation's `session_id` - the one sent, or a new one when none was - is \
+in the `X-Session-ID` response header before the first event, and in `done`.
+
+The request body is the same as `POST /v1/chat`: `message`, optional \
+`session_id`, and optional `property_id` for the listing the user has selected.
+
 Only problems caught before the stream starts are HTTP errors: `403`, `422`, \
 and `429` when this client has sent too many messages. Once the stream has \
 started the status is already `200`, so later failures arrive as an `error` event.
@@ -81,7 +97,7 @@ use `curl -N` or `fetch`.
 
 HISTORY = """\
 The conversation as the user saw it: their messages and the assistant's replies, \
-oldest first. Searches and cards aren't included. An unknown `session_id` \
+oldest first. Use the `session_id` a chat response returned. Searches and cards aren't included. An unknown `session_id` \
 returns an empty list.
 """
 
@@ -95,14 +111,25 @@ message with this `session_id` starts fresh.
 # --------------------------------------------------------------------------- #
 
 CHAT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
+    "new_chat": {
+        "summary": "Start a new chat (no session_id)",
+        "description": "The response's session_id is generated. Send it with the next message.",
+        "value": {"message": "Find a 2 BHK in Model Town under ₹30K"},
+    },
     "find": {
         "summary": "Find a home",
         "description": "Budgets can be written the way people say them: 30K, 50 lakh, 1.2 crore.",
-        "value": {"message": "Find a 2 BHK in Model Town under ₹30K", "session_id": "user-42"},
+        "value": {
+            "message": "Find a 2 BHK in Model Town under ₹30K",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+        },
     },
     "buy": {
         "summary": "Buy within a budget",
-        "value": {"message": "I want to buy a 3 BHK in Indore under 1 crore", "session_id": "user-42"},
+        "value": {
+            "message": "I want to buy a 3 BHK in Indore under 1 crore",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+        },
     },
     "follow_up": {
         "summary": "Follow-up in the same conversation",
@@ -110,12 +137,15 @@ CHAT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
             "Send the same session_id as before. The reply refers to listings shown "
             "earlier, and their cards come back in properties."
         ),
-        "value": {"message": "Compare them", "session_id": "user-42"},
+        "value": {"message": "Compare them", "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c"},
     },
     "around": {
         "summary": "Approximate budget",
         "description": '"Around" searches 15% either side of the amount.',
-        "value": {"message": "Any flats around 80 lakh?", "session_id": "user-42"},
+        "value": {
+            "message": "Any flats around 80 lakh?",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+        },
     },
     "hinglish": {
         "summary": "Hinglish",
@@ -123,14 +153,34 @@ CHAT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
     },
     "by_id": {
         "summary": "Ask about a listing ID",
-        "value": {"message": "Tell me about DW-1003", "session_id": "user-42"},
+        "value": {"message": "Tell me about DW-1003", "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c"},
+    },
+    "selected_property": {
+        "summary": "Ask about the property the user selected",
+        "description": (
+            "The app sends the selected listing as property_id, so the message can just say "
+            '"it". Answered about DW-1003 with no need to name it.'
+        ),
+        "value": {
+            "message": "How far is it from the airport?",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+            "property_id": "DW-1003",
+        },
     },
     "area_rates": {
         "summary": "Average land price in an area",
         "description": "Answered from the rates property portals publish, with each figure's page in sources.",
         "value": {
             "message": "What is the average land price in Vijay Nagar, Indore?",
-            "session_id": "user-42",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+        },
+    },
+    "near_a_property": {
+        "summary": "Schools and hospitals near a listing",
+        "description": "The listing is looked up by ID, and its locality and city are searched.",
+        "value": {
+            "message": "Are there schools and hospitals near DW-1003?",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
         },
     },
     "locality_guide": {
@@ -138,7 +188,7 @@ CHAT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
         "description": "Answered from places web pages list for the area, with each page in sources.",
         "value": {
             "message": "Is Rau, Indore good for families? Schools and hospitals nearby?",
-            "session_id": "user-42",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
         },
     },
 }
@@ -189,7 +239,7 @@ CARD_EXAMPLE: dict[str, Any] = {
 }
 
 CHAT_RESPONSE_EXAMPLE: dict[str, Any] = {
-    "session_id": "user-42",
+    "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
     "reply": (
         'I found 2 verified 3 BHK apartments in Indore under ₹1 Cr. The "Royal Residency" '
         "at ₹85 L is the best fit because it offers premium amenities like a gym and swimming pool."
@@ -209,12 +259,12 @@ SSE_EXAMPLE = (
     '"size_unit": "sqft", "verified": true, "image": "https://res.cloudinary.com/…jpg"}]}\n\n'
     'data: {"type": "token", "content": "I found "}\n\n'
     'data: {"type": "token", "content": "2 verified 3 BHK apartments in Indore under ₹1 Cr."}\n\n'
-    'data: {"type": "done", "session_id": "user-42", '
+    'data: {"type": "done", "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c", '
     '"usage": {"input_tokens": 4230, "output_tokens": 73}}\n\n'
 )
 
 HISTORY_EXAMPLE: dict[str, Any] = {
-    "session_id": "user-42",
+    "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
     "messages": [
         {"role": "user", "content": "I want to buy a 3 BHK in Indore under 1 crore"},
         {"role": "assistant", "content": CHAT_RESPONSE_EXAMPLE["reply"]},
@@ -230,7 +280,7 @@ HISTORY_EXAMPLE: dict[str, Any] = {
 }
 
 AREA_RATES_RESPONSE_EXAMPLE: dict[str, Any] = {
-    "session_id": "user-42",
+    "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
     "reply": (
         "Housing.com lists the average land price in Vijay Nagar, Indore at ₹11,048 per sq ft, with a "
         "price range from ₹356 to ₹22,987 per sq ft. These are asking prices, not DigiNiwas valuations."
@@ -252,7 +302,7 @@ AREA_RATES_RESPONSE_EXAMPLE: dict[str, Any] = {
 }
 
 LOCALITY_GUIDE_RESPONSE_EXAMPLE: dict[str, Any] = {
-    "session_id": "user-42",
+    "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
     "reply": "Vijay Nagar, Indore is approximately 12.1 km from Indore Airport (IDR), as listed by www.rome2rio.com.",
     "properties": [],
     "sources": [
@@ -268,6 +318,18 @@ LOCALITY_GUIDE_RESPONSE_EXAMPLE: dict[str, Any] = {
     ],
     "model": "gpt-4o-mini",
     "usage": {"input_tokens": 6033, "output_tokens": 64},
+}
+
+SELECTED_PROPERTY_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+    "reply": (
+        "In Vijay Nagar, where DW-1003 is located, Indore Airport (IDR) is about 12.1 km away, "
+        "according to www.rome2rio.com."
+    ),
+    "properties": [CARD_EXAMPLE],
+    "sources": LOCALITY_GUIDE_RESPONSE_EXAMPLE["sources"],
+    "model": "gpt-4o-mini",
+    "usage": {"input_tokens": 6749, "output_tokens": 64},
 }
 
 CHAT_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
@@ -291,6 +353,14 @@ CHAT_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "converted to km in code, and the page is in sources."
         ),
         "value": LOCALITY_GUIDE_RESPONSE_EXAMPLE,
+    },
+    "selected_property": {
+        "summary": "Selected property (property_id sent)",
+        "description": (
+            '"How far is it from the airport?" sent with property_id DW-1003. The listing is looked '
+            "up, its locality searched, and its card returned in properties."
+        ),
+        "value": SELECTED_PROPERTY_RESPONSE_EXAMPLE,
     },
 }
 
@@ -316,7 +386,11 @@ SSE_EXAMPLES: dict[str, dict[str, Any]] = {
                 "type": "token",
                 "content": "at ₹11,048 per sq ft, with a price range from ₹356 to ₹22,987 per sq ft.",
             },
-            {"type": "done", "session_id": "user-42", "usage": AREA_RATES_RESPONSE_EXAMPLE["usage"]},
+            {
+                "type": "done",
+                "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+                "usage": AREA_RATES_RESPONSE_EXAMPLE["usage"],
+            },
         ),
     },
 }
@@ -324,6 +398,13 @@ SSE_EXAMPLES: dict[str, dict[str, Any]] = {
 # --------------------------------------------------------------------------- #
 # responses
 # --------------------------------------------------------------------------- #
+
+SESSION_HEADER: dict[str, Any] = {
+    "X-Session-ID": {
+        "description": "The conversation's id: the one sent, or a new one when none was sent.",
+        "schema": {"type": "string", "example": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c"},
+    },
+}
 
 VERSION_HEADERS: dict[str, Any] = {
     "X-API-Version": {

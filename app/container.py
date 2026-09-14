@@ -92,7 +92,8 @@ class Services:
                     page_size=settings.max_property_results,
                 ),
                 build_locality_guide_tool(
-                    LocalityGuideFinder(detail_search, extractor, enabled=settings.locality_guide_enabled)
+                    LocalityGuideFinder(detail_search, extractor, enabled=settings.locality_guide_enabled),
+                    properties=properties,
                 ),
             ],
             sessions=sessions,

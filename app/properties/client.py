@@ -65,5 +65,17 @@ class PropertiesClient:
             total_pages=pagination.get("totalPages"),
         )
 
+    async def find_by_id(self, property_id: str) -> PropertyCard | None:
+        """The live, verified listing with this ID ('DW-1003'), or None.
+
+        The API has no lookup by ID, so this searches for the ID and keeps the
+        exact match. Raises like `search`.
+        """
+        wanted = property_id.strip().casefold()
+        if not wanted:
+            return None
+        page = await self.search(PropertyQuery(search=property_id.strip()), limit=10)
+        return next((card for card in page.cards if card.id.casefold() == wanted), None)
+
     async def aclose(self) -> None:
         await self._http.aclose()

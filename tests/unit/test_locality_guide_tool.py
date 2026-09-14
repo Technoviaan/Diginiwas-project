@@ -4,13 +4,15 @@ import json
 from contextlib import aclosing
 from dataclasses import replace
 
+import httpx
 import pytest
 
 from app.assistant import SourcesFound, Status
 from app.assistant.tools import build_locality_guide_tool
 from app.assistant.tools.locality_guide import LocalityGuideArtifact
 from app.insights import LocalityPlace
-from tests.fakes import Reply, ToolCalls
+from app.properties import PropertiesClient
+from tests.fakes import FakePropertiesAPI, Reply, ToolCalls, make_listing
 
 pytestmark = pytest.mark.anyio
 
@@ -156,3 +158,81 @@ async def test_the_agent_reports_the_pages_it_quotes(build_agent, model):
     assert Status("Looking up schools, hospitals and connectivity…") in collected
     [sources] = [event for event in collected if isinstance(event, SourcesFound)]
     assert [source.source for source in sources.sources] == ["www.edustoke.com"]
+
+
+# --- near a listing ------------------------------------------------------------
+
+
+def with_listings(finder: StubGuideFinder, listings: list[dict]):
+    api = FakePropertiesAPI(listings)
+    client = PropertiesClient(base_url="https://properties.test", timeout=5, transport=api.transport)
+    return build_locality_guide_tool(finder, properties=client), api
+
+
+async def test_a_property_id_searches_around_that_listing():
+    finder = StubGuideFinder({"schools": [school("Podar International School")]})
+    listing = make_listing(
+        "DW-1003", locality="Vijay Nagar", city="Indore", address="Scheme No 54, Vijay Nagar"
+    )
+    tool, _ = with_listings(finder, [make_listing("DW-1002", locality="Rau"), listing])
+
+    message = await invoke(tool, property_id="dw-1003", topics=["schools"])
+    result = json.loads(message.content)
+
+    assert finder.calls == [("Vijay Nagar", "Indore", ["schools"])]
+    assert result["property"]["id"] == "DW-1003"
+    assert result["property"]["address"] == "Scheme No 54, Vijay Nagar"
+    assert "where DW-1003 is" in result["note"]
+    # The listing's card comes back for the app to show.
+    assert [card.id for card in message.artifact.cards] == ["DW-1003"]
+    assert [source.source for source in message.artifact.sources] == ["www.edustoke.com"]
+
+
+async def test_the_listing_wins_over_an_area_the_model_also_passed():
+    finder = StubGuideFinder({})
+    tool, _ = with_listings(finder, [make_listing("DW-1003", locality="Vijay Nagar", city="Indore")])
+    await invoke(tool, property_id="DW-1003", locality="Rau", city="Indore", topics=["hospitals"])
+    assert finder.calls == [("Vijay Nagar", "Indore", ["hospitals"])]
+
+
+async def test_an_unknown_property_id_is_reported_without_searching():
+    finder = StubGuideFinder({})
+    tool, _ = with_listings(finder, [make_listing("DW-1003")])
+
+    message = await invoke(tool, property_id="DW-9999")
+
+    assert "No live DigiNiwas listing has the ID DW-9999" in json.loads(message.content)["note"]
+    assert finder.calls == []
+    assert message.artifact.cards == []
+
+
+async def test_a_listings_outage_is_reported_without_searching():
+    finder = StubGuideFinder({})
+    tool, api = with_listings(finder, [])
+    api.error = httpx.ConnectError("down")
+
+    message = await invoke(tool, property_id="DW-1003")
+
+    assert "could not be loaded" in json.loads(message.content)["note"]
+    assert finder.calls == []
+
+
+async def test_needs_a_property_id_or_an_area():
+    tool = build_locality_guide_tool(StubGuideFinder({}))
+    with pytest.raises(ValueError, match="property_id, or both locality and city"):
+        await invoke(tool, locality="Rau", property_id="  ")
+
+
+async def test_the_agent_shows_the_listing_asked_about(build_agent, model, properties_client):
+    finder = StubGuideFinder({"hospitals": []})
+    agent = build_agent(tools=[build_locality_guide_tool(finder, properties=properties_client)])
+    listing_id = "DW-1003"  # in the fixture listings
+    model.script = [
+        ToolCalls([("locality_guide", {"property_id": listing_id, "topics": ["hospitals"]})]),
+        Reply("I couldn't find reliable information on hospitals in Vijay Nagar, where DW-1003 is."),
+    ]
+
+    result = await agent.run("s1", f"Any hospitals near {listing_id}?")
+
+    assert [card.id for card in result.properties] == [listing_id]
+    assert finder.calls and finder.calls[0][2] == ["hospitals"]

@@ -60,6 +60,22 @@ async def test_system_prompt_override_replaces_the_default(agent, model):
     assert model.requests[0][0].content == "Be brief."
 
 
+async def test_a_selected_property_is_named_to_the_model_for_that_turn_only(agent, model, sessions):
+    model.script = [Reply("Indore Airport is about 12 km away."), Reply("You're welcome.")]
+
+    await collect(agent, "How far is it from the airport?", property_id="DW-1003")
+
+    *_, note, question = model.requests[0]
+    assert type(note).__name__ == "SystemMessage"
+    assert "selected the DigiNiwas listing DW-1003" in note.content
+    assert question == HumanMessage(content="How far is it from the airport?")
+    # History keeps the user's own words, and the note isn't sent again.
+    saved = await sessions.load("s1")
+    assert [type(m).__name__ for m in saved] == ["HumanMessage", "AIMessage"]
+    await collect(agent, "Thanks")
+    assert not any("selected the DigiNiwas listing" in str(m.content) for m in model.requests[1])
+
+
 async def test_model_sees_recent_history_starting_on_a_user_message(build_agent, model, sessions):
     agent = build_agent(history_window=3)
     await sessions.append("s1", [HumanMessage("q1"), AIMessage("a1"), HumanMessage("q2"), AIMessage("a2")])

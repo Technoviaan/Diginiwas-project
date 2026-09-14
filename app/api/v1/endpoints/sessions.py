@@ -18,7 +18,12 @@ SessionId = Annotated[
     str,
     Path(
         description="The conversation's `session_id`.",
-        openapi_examples={"conversation": {"summary": "A user's conversation", "value": "user-42"}},
+        openapi_examples={
+            "conversation": {
+                "summary": "A session_id a chat response returned",
+                "value": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+            }
+        },
     ),
 ]
 

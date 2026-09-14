@@ -88,6 +88,7 @@ def create_app(settings: Settings | None = None, *, services: Services | None = 
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=[
+            "X-Session-ID",
             "X-API-Version",
             "X-API-Latest-Version",
             "Deprecation",

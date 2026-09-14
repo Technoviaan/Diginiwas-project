@@ -181,8 +181,9 @@ nginx holds the reply back and the chat appears all at once.
   mobile-network IP share a limit.
 - **CORS only affects browsers.** Postman, curl and server-to-server calls
   ignore it.
-- **Always send a `session_id` per user.** Requests without one share a
-  single `default` conversation, so users would see each other's context.
+- **Keep the `session_id` the server returns.** A message without one starts
+  a new chat with a generated id; send that id with follow-ups to continue it.
+  Chats live in memory, so a restart or redeploy clears them.
 - **Swagger at `/docs` is public.**
 - **`/health` only means the process is up.** It doesn't check OpenAI or the
   listings API.

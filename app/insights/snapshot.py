@@ -33,7 +33,7 @@ from app.insights.stats import (
 )
 from app.insights.trend import WebTrendEstimator
 from app.insights.websearch import LocalitySearch
-from app.properties import PropertiesClient, PropertyCard, PropertyQuery, format_inr
+from app.properties import PropertiesClient, PropertyCard, format_inr
 
 logger = logging.getLogger(__name__)
 
@@ -135,9 +135,7 @@ class SnapshotService:
         )
 
     async def _find_listing(self, property_id: str) -> PropertyCard | None:
-        page = await self._client.search(PropertyQuery(search=property_id), limit=10)
-        wanted = property_id.strip().casefold()
-        return next((card for card in page.cards if card.id.casefold() == wanted), None)
+        return await self._client.find_by_id(property_id)
 
     async def _sources(self, subject: PropertyCard):
         if self._search is None:

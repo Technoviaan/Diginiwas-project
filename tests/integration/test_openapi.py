@@ -92,10 +92,19 @@ def test_stream_is_documented_as_server_sent_events(spec):
 def test_chat_documents_a_response_for_each_kind_of_question(spec):
     operation = spec["paths"]["/v1/chat"]["post"]
     examples = operation["responses"]["200"]["content"]["application/json"]["examples"]
-    assert sorted(examples) == ["area_rates", "locality_guide", "search"]
-    assert all(examples[name]["value"]["sources"] for name in ("area_rates", "locality_guide"))
+    assert sorted(examples) == ["area_rates", "locality_guide", "search", "selected_property"]
+    assert all(
+        examples[name]["value"]["sources"] for name in ("area_rates", "locality_guide", "selected_property")
+    )
+    assert [card["id"] for card in examples["selected_property"]["value"]["properties"]] == ["DW-1003"]
     requests = operation["requestBody"]["content"]["application/json"]["examples"]
-    assert {"area_rates", "locality_guide"} <= set(requests)
+    assert {"new_chat", "selected_property", "near_a_property", "area_rates", "locality_guide"} <= set(
+        requests
+    )
+    assert "property_id" not in requests["new_chat"]["value"]
+    assert requests["selected_property"]["value"]["property_id"] == "DW-1003"
+    fields = list(spec["components"]["schemas"]["ChatRequest"]["properties"])
+    assert fields == ["message", "session_id", "property_id", "system_prompt"]
     assert (
         '"type": "sources"'
         in spec["paths"]["/v1/chat/stream"]["post"]["responses"]["200"]["content"]["text/event-stream"][

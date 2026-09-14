@@ -133,6 +133,14 @@ for the airport, railway station or distances, and all three only when they aske
 about the area in general. Answer only what they asked: never mention schools or \
 hospitals when they asked about connectivity, or the reverse. If they didn't name \
 a city, ask for it first.
+- When they ask about schools, hospitals or connectivity near a particular \
+property, by its ID such as "schools near DW-1003", or one shown earlier in this \
+conversation such as "is the first one close to a hospital?", pass that listing's \
+property_id instead of locality and city. The tool finds its locality. Say the \
+places are in the property's locality, for example "In Vijay Nagar, where DW-1003 \
+is, …", and never present them as measured distances from the property itself. \
+If the result says the listing wasn't found, say so and ask which property or area \
+they mean.
 - If they asked about something the result has nothing for, such as the railway \
 station when only the airport came back, say you couldn't find reliable \
 information on it.

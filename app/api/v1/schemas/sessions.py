@@ -11,5 +11,5 @@ class Message(BaseModel):
 
 
 class HistoryResponse(BaseModel):
-    session_id: str
+    session_id: str = Field(..., description="The conversation's id.")
     messages: list[Message] = Field(..., description="Oldest first.")
