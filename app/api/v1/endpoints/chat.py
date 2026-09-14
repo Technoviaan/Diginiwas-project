@@ -59,7 +59,7 @@ class EventStreamResponse(StreamingResponse):
         200: {
             "description": "The reply, and the cards and source links to show under it.",
             "headers": docs.VERSION_HEADERS,
-            "content": {"application/json": {"example": docs.CHAT_RESPONSE_EXAMPLE}},
+            "content": {"application/json": {"examples": docs.CHAT_RESPONSE_EXAMPLES}},
         },
         **docs.CHAT_ERRORS,
     },
@@ -86,7 +86,7 @@ async def chat(req: ChatBody, agent: AgentDep, settings: SettingsDep) -> ChatRes
             "model": StreamEvent,
             "description": "Server-Sent Events. Each `data:` line is one StreamEvent.",
             "headers": docs.VERSION_HEADERS,
-            "content": {"text/event-stream": {"example": docs.SSE_EXAMPLE}},
+            "content": {"text/event-stream": {"examples": docs.SSE_EXAMPLES}},
         },
         403: docs.CHAT_ERRORS[403],
         429: docs.CHAT_ERRORS[429],

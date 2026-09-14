@@ -61,7 +61,7 @@ Each event is one `data:` line holding a JSON object. The shapes are under \
 
 | Event | Sent when | What the app should do |
 | --- | --- | --- |
-| `status` | a search starts | show a "searching" indicator |
+| `status` | a search or web lookup starts | show the message as a progress indicator |
 | `properties` | results arrive | render the cards, **replacing** cards sent earlier in this turn |
 | `sources` | web pages were quoted, e.g. area rates or a locality guide | show them as links, **replacing** sources sent earlier in this turn |
 | `token` | reply text is written | append it to the chat bubble |
@@ -227,6 +227,98 @@ HISTORY_EXAMPLE: dict[str, Any] = {
             ),
         },
     ],
+}
+
+AREA_RATES_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "session_id": "user-42",
+    "reply": (
+        "Housing.com lists the average land price in Vijay Nagar, Indore at ₹11,048 per sq ft, with a "
+        "price range from ₹356 to ₹22,987 per sq ft. These are asking prices, not DigiNiwas valuations."
+    ),
+    "properties": [],
+    "sources": [
+        {
+            "title": "639+ Residential Land / Plots for sale in Vijay Nagar, Indore",
+            "url": "https://housing.com/in/buy/indore/vijay-nagar-gid/plots-fid/",
+            "snippet": (
+                "The average price per sqft for Plots in Vijay Nagar, Indore is Rs. 11,048. "
+                "The price range per sqft is Rs. 356 - Rs. 22,987."
+            ),
+            "source": "housing.com",
+        }
+    ],
+    "model": "gpt-4o-mini",
+    "usage": {"input_tokens": 6049, "output_tokens": 78},
+}
+
+LOCALITY_GUIDE_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "session_id": "user-42",
+    "reply": "Vijay Nagar, Indore is approximately 12.1 km from Indore Airport (IDR), as listed by www.rome2rio.com.",
+    "properties": [],
+    "sources": [
+        {
+            "title": "Vijay Nagar to Indore Airport (IDR) - 5 ways to travel ...",
+            "url": (
+                "https://www.rome2rio.com/s/Vijay-Nagar-Scheme-No-54-Indore-Madhya-Pradesh-452010-India/"
+                "Indore-Airport-IDR"
+            ),
+            "snippet": "The distance between Vijay Nagar and Indore Airport (IDR) is 8 miles. The road distance is 7.5 miles.",
+            "source": "www.rome2rio.com",
+        }
+    ],
+    "model": "gpt-4o-mini",
+    "usage": {"input_tokens": 6033, "output_tokens": 64},
+}
+
+CHAT_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
+    "search": {
+        "summary": "Listings found",
+        "description": "A search of DigiNiwas listings: cards in properties, no sources.",
+        "value": CHAT_RESPONSE_EXAMPLE,
+    },
+    "area_rates": {
+        "summary": "Area price rates",
+        "description": (
+            '"What is the average land price in Vijay Nagar, Indore?" The rate comes from a portal\'s '
+            "page, quoted in sources. No DigiNiwas plots there yet, so properties is empty."
+        ),
+        "value": AREA_RATES_RESPONSE_EXAMPLE,
+    },
+    "locality_guide": {
+        "summary": "Locality guide",
+        "description": (
+            '"How far is Vijay Nagar, Indore from the airport?" The road distance (7.5 miles) is '
+            "converted to km in code, and the page is in sources."
+        ),
+        "value": LOCALITY_GUIDE_RESPONSE_EXAMPLE,
+    },
+}
+
+
+def _sse(*events: dict[str, Any]) -> str:
+    return "".join(f"data: {json.dumps(event, ensure_ascii=False)}\n\n" for event in events)
+
+
+SSE_EXAMPLES: dict[str, dict[str, Any]] = {
+    "search": {
+        "summary": "Listings found",
+        "value": SSE_EXAMPLE,
+    },
+    "area_rates": {
+        "summary": "Area price rates, with a sources event",
+        "description": "Sent for area rates and the locality guide: show the sources as links.",
+        "value": _sse(
+            {"type": "status", "message": "Checking published area rates…"},
+            {"type": "properties", "properties": []},
+            {"type": "sources", "sources": AREA_RATES_RESPONSE_EXAMPLE["sources"]},
+            {"type": "token", "content": "Housing.com lists the average land price in Vijay Nagar, Indore "},
+            {
+                "type": "token",
+                "content": "at ₹11,048 per sq ft, with a price range from ₹356 to ₹22,987 per sq ft.",
+            },
+            {"type": "done", "session_id": "user-42", "usage": AREA_RATES_RESPONSE_EXAMPLE["usage"]},
+        ),
+    },
 }
 
 # --------------------------------------------------------------------------- #

@@ -191,7 +191,13 @@ class LocalitySource(BaseModel):
 
     title: str = Field(..., description="The page's title.")
     url: str = Field(..., description="Link to the page.")
-    snippet: str | None = Field(None, description="The search result's excerpt from the page.")
+    snippet: str | None = Field(
+        None,
+        description=(
+            "Text from the page. In a chat response, the exact words the reply's figures or places "
+            "were taken from; in a snapshot, the search result's excerpt."
+        ),
+    )
     source: str | None = Field(None, description="Display domain, e.g. 'timesofindia.com'.")
 
 

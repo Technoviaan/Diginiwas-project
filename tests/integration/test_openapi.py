@@ -27,14 +27,14 @@ def spec(api):
 def test_every_documented_example_is_valid():
     for example in docs.CHAT_REQUEST_EXAMPLES.values():
         ChatRequest.model_validate(example["value"])
-    assert (
-        ChatResponse.model_validate(docs.CHAT_RESPONSE_EXAMPLE).model_dump(mode="json")
-        == docs.CHAT_RESPONSE_EXAMPLE
-    )
+    for example in docs.CHAT_RESPONSE_EXAMPLES.values():
+        value = example["value"]
+        assert ChatResponse.model_validate(value).model_dump(mode="json") == value
     HistoryResponse.model_validate(docs.HISTORY_EXAMPLE)
-    for line in docs.SSE_EXAMPLE.split("\n\n"):
-        if line:
-            StreamEvent.model_validate_json(line.removeprefix("data: "))
+    for example in docs.SSE_EXAMPLES.values():
+        for line in example["value"].split("\n\n"):
+            if line:
+                StreamEvent.model_validate_json(line.removeprefix("data: "))
     for response in [*docs.CHAT_ERRORS.values(), docs.SESSION_NOT_FOUND]:
         ErrorResponse.model_validate(response["content"]["application/json"]["example"])
 
@@ -86,6 +86,22 @@ def test_stream_is_documented_as_server_sent_events(spec):
     content = spec["paths"]["/v1/chat/stream"]["post"]["responses"]["200"]["content"]
     assert list(content) == ["text/event-stream"]
     assert content["text/event-stream"]["schema"] == {"$ref": "#/components/schemas/StreamEvent"}
+    assert sorted(content["text/event-stream"]["examples"]) == ["area_rates", "search"]
+
+
+def test_chat_documents_a_response_for_each_kind_of_question(spec):
+    operation = spec["paths"]["/v1/chat"]["post"]
+    examples = operation["responses"]["200"]["content"]["application/json"]["examples"]
+    assert sorted(examples) == ["area_rates", "locality_guide", "search"]
+    assert all(examples[name]["value"]["sources"] for name in ("area_rates", "locality_guide"))
+    requests = operation["requestBody"]["content"]["application/json"]["examples"]
+    assert {"area_rates", "locality_guide"} <= set(requests)
+    assert (
+        '"type": "sources"'
+        in spec["paths"]["/v1/chat/stream"]["post"]["responses"]["200"]["content"]["text/event-stream"][
+            "examples"
+        ]["area_rates"]["value"]
+    )
 
 
 def test_no_schema_reference_has_sibling_keywords(spec):

@@ -24,6 +24,17 @@ to show under the chat bubble.
 
 In the app, use `POST /{versions.LATEST}/chat/stream` so the reply appears as it's written.
 
+### Beyond listings
+The chat also answers questions about an area, from the web, with sources:
+- **Area price rates**: *"Average land price in Vijay Nagar, Indore?"* gives the \
+rates property portals publish.
+- **Locality guide**: *"Is Rau good for families?"* or *"How far is Vijay Nagar \
+from the airport?"* gives the schools, hospitals, stations and distances web pages list.
+
+Show each item in the response's `sources` as a link under the bubble. Its \
+`snippet` is the exact text quoted. Every figure and place is checked in code \
+against the page it came from, so nothing is estimated.
+
 For a listing's **Property Snapshot** card — price comparison, rental yield, locality \
 trend and data confidence — call `GET /{versions.LATEST}/properties/{{property_id}}/snapshot` \
 with a card's `id`.
@@ -35,7 +46,13 @@ sends `Deprecation`, `Sunset` and `Link` headers. `GET /versions` lists them all
 """
 
 OPENAPI_TAGS = [
-    {"name": "chat v1", "description": "Talk to Niwas AI and manage conversations."},
+    {
+        "name": "chat v1",
+        "description": (
+            "Talk to Niwas AI: find listings, ask area price rates and about schools, hospitals "
+            "and connectivity, and manage conversations."
+        ),
+    },
     {
         "name": "property insights v1",
         "description": "The Property Snapshot card: price, rent, trend and confidence for one listing.",
