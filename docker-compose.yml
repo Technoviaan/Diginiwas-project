@@ -10,6 +10,9 @@
 #
 # See DEPLOY.md.
 
+# Containers are named chatbot-api-1 and chatbot-caddy-1 whatever the folder is called.
+name: chatbot
+
 x-logging: &logging
   driver: json-file
   options:
@@ -19,7 +22,7 @@ x-logging: &logging
 services:
   api:
     build: .
-    image: diginiwas-chat-api:latest
+    image: chatbot-api:latest
     restart: unless-stopped
     env_file: .env.production
     # Bound to 127.0.0.1 only: Caddy reaches the API over the compose network,

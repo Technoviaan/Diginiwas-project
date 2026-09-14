@@ -29,7 +29,7 @@ format: ## Fix what ruff can fix and format the code
 check: lint test ## Lint and test: run before every commit
 
 docker-build: ## Build the production image
-	docker build -t diginiwas-chat-api .
+	docker build -t chatbot-api .
 
 up: ## Start production (API + Caddy), see DEPLOY.md
 	$(COMPOSE) up -d --build
