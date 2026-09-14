@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     # property portals publish, each checked and quoted with its source. Takes
     # effect only once the search provider is configured.
     area_rates_enabled: bool = True
+    # Let the chatbot answer "what schools, hospitals and connectivity does
+    # <area> have?" from places web pages list, each checked and quoted.
+    locality_guide_enabled: bool = True
 
     # --- Server --------------------------------------------------------------
     cors_origins: list[str] = ["*"]

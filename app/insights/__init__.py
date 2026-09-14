@@ -8,6 +8,7 @@ A figure that can't be established is reported as unavailable, not guessed.
 """
 
 from app.insights.comparables import Comparable, ComparablesFinder
+from app.insights.guide import LocalityGuideFinder, LocalityPlace
 from app.insights.models import PropertySnapshot
 from app.insights.rates import AreaRate, AreaRateFinder
 from app.insights.rent import RentEstimate, WebRentEstimator
@@ -20,6 +21,8 @@ __all__ = [
     "AreaRateFinder",
     "Comparable",
     "ComparablesFinder",
+    "LocalityGuideFinder",
+    "LocalityPlace",
     "LocalitySearch",
     "PropertySnapshot",
     "RentEstimate",

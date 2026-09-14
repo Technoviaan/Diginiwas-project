@@ -343,6 +343,29 @@ source of each figure, give ranges as ranges, and say plainly when nothing
 could be verified instead of guessing. Lookups are cached for 7 days per area
 and kind; switch the feature off with `AREA_RATES_ENABLED=false`.
 
+## Locality guide
+
+Ask *"Is Rau, Indore good for families?"* or *"How far is Vijay Nagar from the
+airport?"* and the chatbot calls `locality_guide`
+([`app/assistant/tools/locality_guide.py`](app/assistant/tools/locality_guide.py))
+for schools, hospitals and connectivity. It searches the web once per topic,
+in parallel, and [`app/insights/guide.py`](app/insights/guide.py) accepts a
+place only if:
+
+- the page isn't social media (Facebook, Instagram, Reddit, Quora, YouTube, X);
+- the quote appears word for word in a result naming the locality and city;
+- the place's name is in the quote and reads as what was asked — a school
+  (not a coaching or driving class), a hospital or clinic, a station or airport;
+- a distance, when given, is in the quote; code converts miles and metres to km
+  and refuses vague ones like "10 to 15 Km". Connectivity entries without a
+  distance are dropped.
+
+Every page used comes back in `sources`, quotes included. The prompt requires
+the reply to name the site listing each place, give only distances the result
+states, never call a place "the best", and say so when a topic has nothing
+reliable. Up to 5 places per topic; cached 7 days per area and topic; switch it
+off with `LOCALITY_GUIDE_ENABLED=false`.
+
 ## The prompt
 
 All of Niwas AI's behaviour is written in

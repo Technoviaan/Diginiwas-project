@@ -16,11 +16,12 @@ from langchain_core.language_models import BaseChatModel
 from app.assistant import ChatAgent, InMemorySessionStore, SessionStore
 from app.assistant.llm import build_chat_model
 from app.assistant.prompts import SYSTEM_PROMPT
-from app.assistant.tools import build_area_rates_tool, build_property_search_tool
+from app.assistant.tools import build_area_rates_tool, build_locality_guide_tool, build_property_search_tool
 from app.core.config import Settings
 from app.insights import (
     AreaRateFinder,
     ComparablesFinder,
+    LocalityGuideFinder,
     LocalitySearch,
     SnapshotService,
     WebRentEstimator,
@@ -39,7 +40,7 @@ class Services:
     agent: ChatAgent
     snapshots: SnapshotService
     locality_search: LocalitySearch
-    rates_search: LocalitySearch
+    detail_search: LocalitySearch
 
     @classmethod
     def build(
@@ -74,9 +75,9 @@ class Services:
         )
 
         locality_search = build_locality_search(settings, transport=search_transport)
-        # Area rates read more results: the page with an area-wide rate often
-        # ranks below listing pages.
-        rates_search = build_locality_search(
+        # Area rates and the locality guide read more results: the page with an
+        # area-wide rate or a list of schools often ranks below listing pages.
+        detail_search = build_locality_search(
             settings.model_copy(update={"locality_sources_limit": AREA_RATE_RESULTS}),
             transport=search_transport,
         )
@@ -87,8 +88,11 @@ class Services:
                 build_property_search_tool(properties, page_size=settings.max_property_results),
                 build_area_rates_tool(
                     properties,
-                    AreaRateFinder(rates_search, extractor, enabled=settings.area_rates_enabled),
+                    AreaRateFinder(detail_search, extractor, enabled=settings.area_rates_enabled),
                     page_size=settings.max_property_results,
+                ),
+                build_locality_guide_tool(
+                    LocalityGuideFinder(detail_search, extractor, enabled=settings.locality_guide_enabled)
                 ),
             ],
             sessions=sessions,
@@ -122,10 +126,10 @@ class Services:
             agent=agent,
             snapshots=snapshots,
             locality_search=locality_search,
-            rates_search=rates_search,
+            detail_search=detail_search,
         )
 
     async def aclose(self) -> None:
         await self.properties.aclose()
         await self.locality_search.aclose()
-        await self.rates_search.aclose()
+        await self.detail_search.aclose()

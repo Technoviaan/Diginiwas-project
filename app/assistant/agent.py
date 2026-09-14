@@ -41,6 +41,7 @@ from app.assistant.memory import SessionStore, recent_window
 from app.assistant.messages import extract_text
 from app.assistant.prompts import SYSTEM_PROMPT
 from app.assistant.tools.area_rates import TOOL_NAME as AREA_RATES
+from app.assistant.tools.locality_guide import TOOL_NAME as LOCALITY_GUIDE
 from app.assistant.tools.property_search import TOOL_NAME as PROPERTY_SEARCH
 from app.insights.models import LocalitySource
 from app.properties import PropertyCard
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 STATUS_BY_TOOL = {
     PROPERTY_SEARCH: "Searching verified DigiNiwas listings…",
     AREA_RATES: "Checking published area rates…",
+    LOCALITY_GUIDE: "Looking up schools, hospitals and connectivity…",
 }
 
 
