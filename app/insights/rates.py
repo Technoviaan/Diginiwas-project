@@ -64,7 +64,16 @@ MAX_RATE_PER_SQFT = 300_000
 MIN_RATE_PER_BIGHA = 10_000
 MAX_RATE_PER_BIGHA = 1_000_000_000
 CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+# A lookup that found nothing is retried sooner: search results and the
+# extractor's reading of them vary, and one miss shouldn't hide an area's
+# published rate for a week.
+EMPTY_CACHE_TTL_SECONDS = 60 * 60
 MAX_CACHE_ENTRIES = 512
+
+
+def _ttl(rates: list[object]) -> int:
+    return CACHE_TTL_SECONDS if rates else EMPTY_CACHE_TTL_SECONDS
+
 
 _UNIT_PATTERNS: tuple[tuple[Unit, re.Pattern[str]], ...] = (
     ("sqyd", re.compile(r"sq\.?\s*(?:yd|yard)s?\b|square\s+yards?|\bgaj\b")),
@@ -168,7 +177,7 @@ class AreaRateFinder:
 
         key = f"{locality}|{city}|{kind}".casefold()
         entry = self._cache.get(key)
-        if entry is not None and time.monotonic() - entry[0] <= CACHE_TTL_SECONDS:
+        if entry is not None and time.monotonic() - entry[0] <= _ttl(entry[1]):
             return entry[1]
 
         query = RATE_QUERIES[kind].format(locality=locality, city=city)

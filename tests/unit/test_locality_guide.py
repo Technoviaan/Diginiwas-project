@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from app.insights import LocalityGuideFinder, LocalitySearch
+from app.insights import guide as guide_module
 from app.insights.guide import _km
 from tests.fakes import Reply, ScriptedChatModel
 
@@ -205,3 +206,25 @@ async def test_asks_once_per_area_and_topic():
 
     assert first == second
     assert len(model.requests) == 1
+
+
+async def test_a_topic_that_found_nothing_is_retried_after_an_hour(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(guide_module.time, "monotonic", lambda: now[0])
+    model = ScriptedChatModel(
+        script=[
+            Reply(json.dumps({"places": []})),
+            Reply(json.dumps({"places": [place("SICA Senior Secondary School", EDUSTOKE_QUOTE)]})),
+        ]
+    )
+    finder = LocalityGuideFinder(searching(result(EDUSTOKE_TITLE, EDUSTOKE)), model, enabled=True)
+
+    assert await finder.find("Vijay Nagar", "Indore", ["schools"]) == {"schools": []}
+    now[0] = 30 * 60
+    await finder.find("Vijay Nagar", "Indore", ["schools"])
+    assert len(model.requests) == 1
+
+    now[0] = 61 * 60
+    found = await finder.find("Vijay Nagar", "Indore", ["schools"])
+    assert [item.name for item in found["schools"]] == ["SICA Senior Secondary School"]
+    assert len(model.requests) == 2

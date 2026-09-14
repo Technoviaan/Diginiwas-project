@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from app.insights import AreaRateFinder, LocalitySearch
+from app.insights import rates as rates_module
 from tests.fakes import Reply, ScriptedChatModel
 
 pytestmark = pytest.mark.anyio
@@ -215,3 +216,31 @@ async def test_asks_once_per_area_and_kind():
 
     assert first == second
     assert len(model.requests) == 1
+
+
+async def test_a_lookup_that_found_nothing_is_retried_after_an_hour(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(rates_module.time, "monotonic", lambda: now[0])
+    quote = "The average price per sqft for Plots in Vijay Nagar, Indore is Rs. 11,048."
+    model = ScriptedChatModel(
+        script=[
+            Reply(json.dumps({"rates": []})),
+            Reply(json.dumps({"rates": [rate(quote, average="Rs. 11,048")]})),
+        ]
+    )
+    finder = AreaRateFinder(searching(result(HOUSING_TITLE, HOUSING)), model, enabled=True)
+
+    assert await finder.find("Vijay Nagar", "Indore", "land") == []
+    now[0] = 30 * 60
+    assert await finder.find("Vijay Nagar", "Indore", "land") == []
+    assert len(model.requests) == 1
+
+    now[0] = 61 * 60
+    [found] = await finder.find("Vijay Nagar", "Indore", "land")
+    assert found.average == 11_048
+    assert len(model.requests) == 2
+
+    # A rate that was found is kept for the full week.
+    now[0] = 6 * 24 * 60 * 60
+    await finder.find("Vijay Nagar", "Indore", "land")
+    assert len(model.requests) == 2

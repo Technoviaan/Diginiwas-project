@@ -46,7 +46,15 @@ GUIDE_RESULTS = 6
 MAX_PLACES_PER_TOPIC = 5
 MAX_DISTANCE_KM = 60
 CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+# A topic that found nothing is retried sooner: one miss shouldn't hide an
+# area's schools or hospitals for a week.
+EMPTY_CACHE_TTL_SECONDS = 60 * 60
 MAX_CACHE_ENTRIES = 512
+
+
+def _ttl(places: list[object]) -> int:
+    return CACHE_TTL_SECONDS if places else EMPTY_CACHE_TTL_SECONDS
+
 
 GUIDE_QUERIES: dict[str, str] = {
     "schools": "best schools in {locality} {city}",
@@ -145,7 +153,7 @@ class LocalityGuideFinder:
     async def _topic(self, locality: str, city: str, topic: Topic) -> list[LocalityPlace]:
         key = f"{locality}|{city}|{topic}".casefold()
         entry = self._cache.get(key)
-        if entry is not None and time.monotonic() - entry[0] <= CACHE_TTL_SECONDS:
+        if entry is not None and time.monotonic() - entry[0] <= _ttl(entry[1]):
             return entry[1]
 
         query = GUIDE_QUERIES[topic].format(locality=locality, city=city)
