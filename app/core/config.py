@@ -47,7 +47,9 @@ class Settings(BaseSettings):
     max_sessions: int = 10_000
 
     # --- DigiNiwas properties API --------------------------------------------
-    properties_api_base_url: str = "https://backend-diginiwas.onrender.com"
+    # Required, and set only in the environment (.env / .env.production): the
+    # code carries no backend address. The service refuses to start without it.
+    properties_api_base_url: str | None = None
     # Generous: a sleeping Render instance can take ~50s to wake up.
     properties_api_timeout: float = 60.0
     # Listings fetched per search, so the most cards shown per reply.

@@ -34,3 +34,16 @@ def test_refuses_to_start_without_an_openai_key(settings):
     app = create_app(settings.model_copy(update={"openai_api_key": " "}))
     with pytest.raises(RuntimeError, match="OPENAI_API_KEY is not set"), TestClient(app):
         pass
+
+
+@pytest.mark.parametrize("url", [None, ""])
+def test_refuses_to_start_without_a_backend_url(settings, url):
+    app = create_app(settings.model_copy(update={"properties_api_base_url": url}))
+    with pytest.raises(RuntimeError, match="PROPERTIES_API_BASE_URL is not set"), TestClient(app):
+        pass
+
+
+def test_the_backend_url_comes_only_from_the_environment():
+    from app.core.config import Settings
+
+    assert Settings(_env_file=None).properties_api_base_url is None

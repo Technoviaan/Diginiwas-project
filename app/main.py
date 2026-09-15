@@ -53,6 +53,12 @@ def create_app(settings: Settings | None = None, *, services: Services | None = 
                 "  or export it:          export OPENAI_API_KEY=sk-...\n"
                 "  Get a key at https://platform.openai.com/api-keys"
             )
+        if not settings.properties_api_base_url:
+            raise RuntimeError(
+                "PROPERTIES_API_BASE_URL is not set.\n"
+                "  Put the DigiNiwas backend's address in .env (or .env.production):\n"
+                "    PROPERTIES_API_BASE_URL=https://your-backend.example.com"
+            )
         app.state.services = services if services is not None else Services.build(settings)
         logger.info(
             "Niwas AI ready (model=%s, properties=%s, versions=%s)",

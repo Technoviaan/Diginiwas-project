@@ -79,6 +79,7 @@ Set at least:
 | --- | --- |
 | `DOMAIN` | the API's domain, e.g. `api.diginiwas.com` |
 | `OPENAI_API_KEY` | the new production key |
+| `PROPERTIES_API_BASE_URL` | the DigiNiwas backend, e.g. `https://backend-diginiwas.onrender.com` (required; not in the code) |
 | `CORS_ORIGINS` | the websites that embed the chat, e.g. `["https://diginiwas.com"]` |
 
 ## 4. Start
@@ -161,7 +162,7 @@ nginx holds the reply back and the chat appears all at once.
 
 | Symptom | Likely cause | Look at |
 | --- | --- | --- |
-| `api` keeps restarting | `OPENAI_API_KEY` missing or blank; the API refuses to start without it | `docker compose --env-file .env.production logs api` |
+| `api` keeps restarting | `OPENAI_API_KEY` or `PROPERTIES_API_BASE_URL` missing or blank; the API refuses to start without either | `docker compose --env-file .env.production logs api` |
 | `caddy` never starts | it waits for `api` to be healthy; fix `api` first | same |
 | HTTPS certificate error | DNS doesn't point at this server yet, or ports 80/443 are closed | `docker compose --env-file .env.production logs caddy` |
 | Browser: CORS error | the site isn't in `CORS_ORIGINS` | `.env.production` |

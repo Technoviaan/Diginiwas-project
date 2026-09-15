@@ -614,7 +614,7 @@ Only breaking changes need a new version.
 | `HISTORY_WINDOW` | `24` | messages replayed; a searching turn uses ~4 |
 | `MAX_TOOL_ROUNDS` | `3` | model↔tool round trips per message |
 | `MAX_SESSIONS` | `10000` | conversations kept in memory; least recently used dropped first |
-| `PROPERTIES_API_BASE_URL` | `https://backend-diginiwas.onrender.com` | |
+| `PROPERTIES_API_BASE_URL` | **required** | the DigiNiwas backend, e.g. `https://backend-diginiwas.onrender.com`; set only in `.env`, the API won't start without it |
 | `PROPERTIES_API_TIMEOUT` | `60` | seconds; a sleeping Render instance is slow to wake |
 | `MAX_PROPERTY_RESULTS` | `6` | cards per search |
 | `PROPERTY_URL_TEMPLATE` | unset | e.g. `https://diginiwas.com/property/{id}` |
