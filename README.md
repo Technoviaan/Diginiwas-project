@@ -382,6 +382,36 @@ source of each figure, give ranges as ranges, and say plainly when nothing
 could be verified instead of guessing. Lookups are cached for 7 days per area
 and kind; switch the feature off with `AREA_RATES_ENABLED=false`.
 
+## Why buy this property
+
+Ask *"Why should I buy DW-1003?"*, *"is it worth the price?"* or *"what do I get
+here?"* and the chatbot calls `property_case`
+([`app/assistant/tools/property_case.py`](app/assistant/tools/property_case.py)),
+which gathers the evidence for that one listing in a single call:
+
+- **its own data** — price, ₹/sqft, size, furnishing, floor, amenities, tags,
+  whether it is verified and negotiable;
+- **the price check** — the Property Snapshot's comparison against comparable
+  live listings, with the sample size and confidence;
+- **against the area** — the ₹/sqft gap between this listing and the rate
+  portals publish for that locality, worked out in code, and only against the
+  same kind of property (a plot against land rates, a flat against flat rates);
+- **rental yield and locality trend** — from the Snapshot, with their quotes
+  and sources;
+- **nearby** — schools, hospitals and station or airport distances from the
+  locality guide.
+
+Everything that could not be established comes back in `not_established`, and
+the prompt makes the reply say so rather than fill the gap. The reply may run
+to 6 short sentences (longer than the usual 2), still plain text, must name the
+source of every web figure, and must state the weak points too — including when
+the listing is priced above comparable listings. The listing's card comes back
+in `properties`, every page quoted in `sources`.
+
+One such question costs more than a normal message: up to 5 web searches and a
+few small model calls, or about ₹0.5. Repeats in the same area are cached for 7
+days.
+
 ## Locality guide
 
 Ask *"Is Rau, Indore good for families?"* or *"How far is Vijay Nagar from the

@@ -16,7 +16,12 @@ from langchain_core.language_models import BaseChatModel
 from app.assistant import ChatAgent, InMemorySessionStore, SessionStore
 from app.assistant.llm import build_chat_model
 from app.assistant.prompts import SYSTEM_PROMPT
-from app.assistant.tools import build_area_rates_tool, build_locality_guide_tool, build_property_search_tool
+from app.assistant.tools import (
+    build_area_rates_tool,
+    build_locality_guide_tool,
+    build_property_case_tool,
+    build_property_search_tool,
+)
 from app.core.config import Settings
 from app.insights import (
     AreaRateFinder,
@@ -82,24 +87,9 @@ class Services:
             transport=search_transport,
         )
 
-        agent = ChatAgent(
-            chat_model=model,
-            tools=[
-                build_property_search_tool(properties, page_size=settings.max_property_results),
-                build_area_rates_tool(
-                    properties,
-                    AreaRateFinder(detail_search, extractor, enabled=settings.area_rates_enabled),
-                    page_size=settings.max_property_results,
-                ),
-                build_locality_guide_tool(
-                    LocalityGuideFinder(detail_search, extractor, enabled=settings.locality_guide_enabled),
-                    properties=properties,
-                ),
-            ],
-            sessions=sessions,
-            system_prompt=settings.system_prompt or SYSTEM_PROMPT,
-            history_window=settings.history_window,
-            max_tool_rounds=settings.max_tool_rounds,
+        area_rates = AreaRateFinder(detail_search, extractor, enabled=settings.area_rates_enabled)
+        locality_guide = LocalityGuideFinder(
+            detail_search, extractor, enabled=settings.locality_guide_enabled
         )
         snapshots = SnapshotService(
             properties,
@@ -119,6 +109,20 @@ class Services:
             web_rent=WebRentEstimator(locality_search, extractor, enabled=settings.web_rent_enabled),
             vacancy_months=settings.rental_vacancy_months,
             radius_km=settings.comparable_radius_km,
+        )
+        # The agent comes last: its property_case tool draws on everything above.
+        agent = ChatAgent(
+            chat_model=model,
+            tools=[
+                build_property_search_tool(properties, page_size=settings.max_property_results),
+                build_area_rates_tool(properties, area_rates, page_size=settings.max_property_results),
+                build_locality_guide_tool(locality_guide, properties=properties),
+                build_property_case_tool(properties, snapshots, guide=locality_guide, rates=area_rates),
+            ],
+            sessions=sessions,
+            system_prompt=settings.system_prompt or SYSTEM_PROMPT,
+            history_window=settings.history_window,
+            max_tool_rounds=settings.max_tool_rounds,
         )
         return cls(
             settings=settings,

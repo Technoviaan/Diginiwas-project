@@ -45,6 +45,13 @@ near DW-1003"*, or *"is the first one close to a hospital?"* after a search - an
 the listing is looked up to use its locality and city; its card comes back in \
 `properties`.
 
+**Why buy this one.** *"Why should I buy DW-1003?"*, *"is it worth the price?"* \
+or *"what's nearby?"* is answered from evidence gathered in one go: the listing's \
+own data, its price against comparable listings and against published area rates, \
+the rental yield, the locality trend, and nearby schools, hospitals and transport. \
+The listing's card comes back in `properties` and every page quoted in `sources`. \
+Anything that couldn't be established is said plainly rather than filled in.
+
 **Selected property.** When the user has picked a listing in the app, send its \
 ID as `property_id` with each message. *"How far is it from the airport?"* or \
 *"Any schools nearby?"* is then answered about that listing without naming it.
@@ -154,6 +161,18 @@ CHAT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
     "by_id": {
         "summary": "Ask about a listing ID",
         "value": {"message": "Tell me about DW-1003", "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c"},
+    },
+    "why_buy": {
+        "summary": "Why should I buy this one?",
+        "description": (
+            "Answered from the listing's data, its price against comparables and published area "
+            "rates, the rental yield, the locality trend, and what is nearby - each with its source."
+        ),
+        "value": {
+            "message": "Why should I buy this one?",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+            "property_id": "DW-1003",
+        },
     },
     "selected_property": {
         "summary": "Ask about the property the user selected",
