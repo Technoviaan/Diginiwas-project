@@ -28,6 +28,13 @@ airport?"* is answered about that listing.
 
 In the app, use `POST /{versions.LATEST}/chat/stream` so the reply appears as it's written.
 
+### Guided flows
+`GET /{versions.LATEST}/prompts` serves the app's four entry points - Find My Home, \
+Compare Homes, Explore Locality and Price Trends - with the opening question, quick \
+chips and examples to show for each. Send the flow's id back as `flow` on every \
+message in it and the assistant asks for one missing detail at a time; for Compare \
+Homes, send the ticked listings as `property_ids`.
+
 ### Beyond listings
 The chat also answers questions about an area, from the web, with sources:
 - **Area price rates**: *"Average land price in Vijay Nagar, Indore?"* gives the \
@@ -53,8 +60,8 @@ OPENAPI_TAGS = [
     {
         "name": "chat v1",
         "description": (
-            "Talk to Niwas AI: find listings, ask area price rates and about schools, hospitals "
-            "and connectivity, and manage conversations."
+            "Talk to Niwas AI: the guided flows, finding listings, area price rates, schools, "
+            "hospitals and connectivity, and managing conversations."
         ),
     },
     {

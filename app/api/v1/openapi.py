@@ -11,7 +11,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.api.v1.schemas import ErrorResponse
+from app.api.v1.schemas.errors import ErrorResponse
+from app.assistant.flows import FLOWS
 
 # --------------------------------------------------------------------------- #
 # descriptions
@@ -51,6 +52,11 @@ own data, its price against comparable listings and against published area rates
 the rental yield, the locality trend, and nearby schools, hospitals and transport. \
 The listing's card comes back in `properties` and every page quoted in `sources`. \
 Anything that couldn't be established is said plainly rather than filled in.
+
+**Guided flows.** `GET /v1/prompts` serves the app's four entry points (Find My \
+Home, Compare Homes, Explore Locality, Price Trends). Send the one the user is \
+in as `flow`, and the assistant follows it, asking for one missing detail at a \
+time. For Compare Homes, send the chosen listings as `property_ids`.
 
 **Selected property.** When the user has picked a listing in the app, send its \
 ID as `property_id` with each message. *"How far is it from the airport?"* or \
@@ -92,7 +98,8 @@ The conversation's `session_id` - the one sent, or a new one when none was - is 
 in the `X-Session-ID` response header before the first event, and in `done`.
 
 The request body is the same as `POST /v1/chat`: `message`, optional \
-`session_id`, and optional `property_id` for the listing the user has selected.
+`session_id`, optional `property_id` for the listing the user has selected, and \
+optional `flow` and `property_ids` for a guided flow.
 
 Only problems caught before the stream starts are HTTP errors: `403`, `422`, \
 and `429` when this client has sent too many messages. Once the stream has \
@@ -100,6 +107,25 @@ started the status is already `200`, so later failures arrive as an `error` even
 
 Swagger UI shows the stream only after it finishes. To watch events arrive, \
 use `curl -N` or `fetch`.
+"""
+
+PROMPTS = """\
+The guided flows to show as entry points to the chat, in order. The wording \
+lives on the server so the app doesn't hardcode it and the two can't drift \
+apart.
+
+**For each flow**
+- `opening_question` → the assistant's first bubble when the flow opens
+- `chips` → rows of quick chips; tapping one adds its text to the message
+- `examples` → hints to show in the input
+- `answer_includes` → what a complete answer covers, for laying out the screen
+- `empty_message` → show this *instead* of opening the flow when its \
+precondition isn't met, e.g. Compare Homes with fewer than two saved properties
+
+Send the flow's `id` back as `flow` on every chat message in it, so the \
+assistant conducts that conversation: asking for one missing detail at a time \
+rather than a form's worth at once. For Compare Homes, also send the selected \
+listings as `property_ids`.
 """
 
 HISTORY = """\
@@ -161,6 +187,28 @@ CHAT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
     "by_id": {
         "summary": "Ask about a listing ID",
         "value": {"message": "Tell me about DW-1003", "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c"},
+    },
+    "guided_flow": {
+        "summary": "A message inside a guided flow",
+        "description": (
+            "The flow id comes from GET /v1/prompts. In find_home the assistant asks for one "
+            "missing detail at a time instead of a form's worth at once."
+        ),
+        "value": {
+            "message": "Buy",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+            "flow": "find_home",
+        },
+    },
+    "compare_saved": {
+        "summary": "Compare saved properties",
+        "description": "The listings the user ticked, so the message needn't name them.",
+        "value": {
+            "message": "Compare these",
+            "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+            "flow": "compare_homes",
+            "property_ids": ["DW-1003", "DW-1002"],
+        },
     },
     "why_buy": {
         "summary": "Why should I buy this one?",
@@ -282,6 +330,27 @@ SSE_EXAMPLE = (
     '"usage": {"input_tokens": 4230, "output_tokens": 73}}\n\n'
 )
 
+
+def _prompts_example() -> dict[str, Any]:
+    """Built from the flows themselves, so the example can't drift from the response."""
+    return {
+        "flows": [
+            {
+                "id": flow.id,
+                "title": flow.title,
+                "opening_question": flow.opening_question,
+                "chips": [{"label": group.label, "options": list(group.options)} for group in flow.chips],
+                "examples": list(flow.examples),
+                "answer_includes": list(flow.answer_includes),
+                "empty_message": flow.empty_message,
+            }
+            for flow in FLOWS
+        ]
+    }
+
+
+PROMPTS_EXAMPLE: dict[str, Any] = _prompts_example()
+
 HISTORY_EXAMPLE: dict[str, Any] = {
     "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
     "messages": [
@@ -351,6 +420,15 @@ SELECTED_PROPERTY_RESPONSE_EXAMPLE: dict[str, Any] = {
     "usage": {"input_tokens": 6749, "output_tokens": 64},
 }
 
+GUIDED_FLOW_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "session_id": "3f6c1b2e-8d4a-4c1e-9b7a-2d5e6f7a8b9c",
+    "reply": "What type of property are you looking for: residential, commercial, or land?",
+    "properties": [],
+    "sources": [],
+    "model": "gpt-4o-mini",
+    "usage": {"input_tokens": 3734, "output_tokens": 17},
+}
+
 CHAT_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
     "search": {
         "summary": "Listings found",
@@ -372,6 +450,14 @@ CHAT_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "converted to km in code, and the page is in sources."
         ),
         "value": LOCALITY_GUIDE_RESPONSE_EXAMPLE,
+    },
+    "guided_flow": {
+        "summary": "Inside a guided flow: one question back",
+        "description": (
+            '"Buy" sent with flow find_home. The assistant asks for the next missing detail only, '
+            "so no cards or sources yet."
+        ),
+        "value": GUIDED_FLOW_RESPONSE_EXAMPLE,
     },
     "selected_property": {
         "summary": "Selected property (property_id sent)",

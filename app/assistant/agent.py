@@ -37,6 +37,7 @@ from app.assistant.events import (
     TokenUsage,
     TurnComplete,
 )
+from app.assistant.flows import comparison_note, flow_note
 from app.assistant.memory import SessionStore, recent_window
 from app.assistant.messages import extract_text
 from app.assistant.prompts import SYSTEM_PROMPT
@@ -96,6 +97,8 @@ class ChatAgent:
         *,
         system_prompt: str | None = None,
         property_id: str | None = None,
+        property_ids: Sequence[str] | None = None,
+        flow: str | None = None,
     ) -> AsyncIterator[AgentEvent]:
         """Run one turn, yielding events as they happen.
 
@@ -103,10 +106,10 @@ class ChatAgent:
         PropertiesFound replaces an earlier one: if the model relaxes a filter
         and searches again, its reply is about the newer results.
 
-        `property_id` is the listing the user has selected in the app: "it" and
-        "this property" in the message mean that listing. The note saying so
-        goes to the model for this turn only; the saved turn keeps the user's
-        own words.
+        What the app knows about the moment - the selected `property_id`, the
+        `property_ids` put up for comparison, and the guided `flow` the user is
+        in - is told to the model for this turn only. The saved turn keeps the
+        user's own words, so history stays what they typed.
 
         Always consume this with `contextlib.aclosing`, so the turn is saved
         even when the consumer stops early.
@@ -116,7 +119,7 @@ class ChatAgent:
         messages: list[BaseMessage] = [
             SystemMessage(content=system_prompt or self._system_prompt),
             *recent_window(history, self._history_window),
-            *([SystemMessage(content=selected_property_note(property_id))] if property_id else []),
+            *(SystemMessage(content=note) for note in _context_notes(property_id, property_ids, flow)),
             human,
         ]
         turn: list[BaseMessage] = [human]
@@ -200,11 +203,20 @@ class ChatAgent:
         *,
         system_prompt: str | None = None,
         property_id: str | None = None,
+        property_ids: Sequence[str] | None = None,
+        flow: str | None = None,
     ) -> TurnResult:
         """The same turn, collected into one result."""
         result = TurnResult(reply="")
         parts: list[str] = []
-        stream = self.stream(session_id, message, system_prompt=system_prompt, property_id=property_id)
+        stream = self.stream(
+            session_id,
+            message,
+            system_prompt=system_prompt,
+            property_id=property_id,
+            property_ids=property_ids,
+            flow=flow,
+        )
         async with aclosing(stream) as events:
             async for event in events:
                 match event:
@@ -238,6 +250,18 @@ class ChatAgent:
                 tool_call_id=call["id"],
                 status="error",
             )
+
+
+def _context_notes(
+    property_id: str | None, property_ids: Sequence[str] | None, flow: str | None
+) -> list[str]:
+    """What the app knows about this moment, in the order the model should read it."""
+    notes = [
+        flow_note(flow) if flow else None,
+        selected_property_note(property_id) if property_id else None,
+        comparison_note(list(property_ids)) if property_ids else None,
+    ]
+    return [note for note in notes if note]
 
 
 def selected_property_note(property_id: str) -> str:

@@ -136,6 +136,35 @@ Each reply has two parts, matching the chat UI:
 | Property card carousel under the bubble | `properties[]` |
 | "Searching…" shimmer | `status` event (streaming only) |
 
+### Guided flows
+
+`GET /v1/prompts` serves the app's four entry points, so the wording isn't
+hardcoded in the app: **Find My Home**, **Compare Homes**, **Explore Locality**
+and **Price Trends**. Each flow carries its opening question, rows of quick
+chips, example messages, what a complete answer covers, and — for Compare
+Homes — the message to show when fewer than two properties are selected. The
+content and the guidance the model receives sit together in
+[`app/assistant/flows.py`](app/assistant/flows.py) so they can't drift apart.
+
+Send the flow's `id` back as `flow` with every message in it, and the assistant
+conducts that conversation: **one missing detail per question**, never a form's
+worth at once.
+
+```bash
+curl -s localhost:8000/v1/prompts
+curl -s localhost:8000/v1/chat -H 'content-type: application/json' \
+  -d '{"message": "Buy", "flow": "find_home"}'
+# -> "What type of property are you looking to buy: residential, commercial, or land?"
+```
+
+For Compare Homes, send the ticked listings as `property_ids` (up to 10) and the
+message needn't name them:
+
+```bash
+curl -s localhost:8000/v1/chat -H 'content-type: application/json' \
+  -d '{"message": "Compare these", "flow": "compare_homes", "property_ids": ["DW-1003", "DW-1002"]}'
+```
+
 ### Sessions
 
 | Send | What happens |

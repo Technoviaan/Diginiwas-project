@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.assistant.flows import FlowId
 from app.insights.models import LocalitySource
 from app.properties import PropertyCard
 
@@ -35,6 +36,24 @@ class ChatRequest(BaseModel):
         ),
         examples=["DW-1003"],
     )
+    property_ids: list[str] | None = Field(
+        None,
+        max_length=10,
+        description=(
+            'Listings the user picked to compare, e.g. `["DW-1003", "DW-1002"]`. Sent with the '
+            "Compare Homes flow; the reply compares these, so the message needn't name them."
+        ),
+        examples=[["DW-1003", "DW-1002"]],
+    )
+    flow: FlowId | None = Field(
+        None,
+        description=(
+            "The guided flow the user is in, from `GET /v1/prompts`: `find_home`, `compare_homes`, "
+            "`explore_locality` or `price_trends`. The assistant then follows that flow, asking for "
+            "one missing detail at a time. Leave it out for free chat."
+        ),
+        examples=["find_home"],
+    )
     system_prompt: str | None = Field(
         None,
         description=(
@@ -43,12 +62,20 @@ class ChatRequest(BaseModel):
         ),
     )
 
-    @field_validator("session_id", "property_id", mode="before")
+    @field_validator("session_id", "property_id", "flow", mode="before")
     @classmethod
     def _blank_is_missing(cls, value: object) -> object:
         # An empty session_id starts a new conversation; an empty property_id selects nothing.
         if isinstance(value, str):
             return value.strip() or None
+        return value
+
+    @field_validator("property_ids", mode="before")
+    @classmethod
+    def _without_blanks(cls, value: object) -> object:
+        if isinstance(value, list):
+            ids = [item.strip() for item in value if isinstance(item, str) and item.strip()]
+            return ids or None
         return value
 
 

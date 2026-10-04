@@ -72,7 +72,12 @@ async def chat(req: ChatBody, response: Response, agent: AgentDep, settings: Set
     session_id = _session_id(req)
     response.headers[SESSION_HEADER] = session_id
     result = await agent.run(
-        session_id, req.message, system_prompt=system_prompt, property_id=req.property_id
+        session_id,
+        req.message,
+        system_prompt=system_prompt,
+        property_id=req.property_id,
+        property_ids=req.property_ids,
+        flow=req.flow,
     )
     return ChatResponse(
         session_id=session_id,
@@ -110,7 +115,12 @@ async def chat_stream(
     async def events() -> AsyncIterator[str]:
         try:
             stream = agent.stream(
-                session_id, req.message, system_prompt=system_prompt, property_id=req.property_id
+                session_id,
+                req.message,
+                system_prompt=system_prompt,
+                property_id=req.property_id,
+                property_ids=req.property_ids,
+                flow=req.flow,
             )
             async with aclosing(stream) as agent_events:
                 async for event in agent_events:

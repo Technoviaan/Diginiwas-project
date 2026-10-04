@@ -15,16 +15,20 @@ from app.api.v1.schemas.events import (
     StreamEvent,
     TokenEvent,
 )
+from app.api.v1.schemas.prompts import ChipGroup, PromptFlow, PromptsResponse
 from app.api.v1.schemas.sessions import HistoryResponse, Message
 
 __all__ = [
     "ChatRequest",
     "ChatResponse",
+    "ChipGroup",
     "DoneEvent",
     "ErrorEvent",
     "ErrorResponse",
     "HistoryResponse",
     "Message",
+    "PromptFlow",
+    "PromptsResponse",
     "PropertiesEvent",
     "SourcesEvent",
     "StatusEvent",

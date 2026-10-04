@@ -3,7 +3,14 @@
 import pytest
 
 from app.api.v1 import openapi as docs
-from app.api.v1.schemas import ChatRequest, ChatResponse, ErrorResponse, HistoryResponse, StreamEvent
+from app.api.v1.schemas import (
+    ChatRequest,
+    ChatResponse,
+    ErrorResponse,
+    HistoryResponse,
+    PromptsResponse,
+    StreamEvent,
+)
 from app.insights import PropertySnapshot
 
 SNAPSHOT_SCHEMAS = (
@@ -31,6 +38,9 @@ def test_every_documented_example_is_valid():
         value = example["value"]
         assert ChatResponse.model_validate(value).model_dump(mode="json") == value
     HistoryResponse.model_validate(docs.HISTORY_EXAMPLE)
+    assert (
+        PromptsResponse.model_validate(docs.PROMPTS_EXAMPLE).model_dump(mode="json") == docs.PROMPTS_EXAMPLE
+    )
     for example in docs.SSE_EXAMPLES.values():
         for line in example["value"].split("\n\n"):
             if line:
@@ -77,6 +87,7 @@ def test_operations_are_stable(spec):
         "delete_session_v1_sessions__session_id__delete",
         "health_health_get",
         "history_v1_sessions__session_id__history_get",
+        "prompts_v1_prompts_get",
         "property_snapshot_v1_properties__property_id__snapshot_get",
         "versions_versions_get",
     ]
@@ -92,19 +103,34 @@ def test_stream_is_documented_as_server_sent_events(spec):
 def test_chat_documents_a_response_for_each_kind_of_question(spec):
     operation = spec["paths"]["/v1/chat"]["post"]
     examples = operation["responses"]["200"]["content"]["application/json"]["examples"]
-    assert sorted(examples) == ["area_rates", "locality_guide", "search", "selected_property"]
+    assert sorted(examples) == [
+        "area_rates",
+        "guided_flow",
+        "locality_guide",
+        "search",
+        "selected_property",
+    ]
     assert all(
         examples[name]["value"]["sources"] for name in ("area_rates", "locality_guide", "selected_property")
     )
     assert [card["id"] for card in examples["selected_property"]["value"]["properties"]] == ["DW-1003"]
     requests = operation["requestBody"]["content"]["application/json"]["examples"]
-    assert {"new_chat", "selected_property", "near_a_property", "area_rates", "locality_guide"} <= set(
-        requests
-    )
+    assert {
+        "new_chat",
+        "guided_flow",
+        "compare_saved",
+        "why_buy",
+        "selected_property",
+        "near_a_property",
+        "area_rates",
+        "locality_guide",
+    } <= set(requests)
+    assert requests["guided_flow"]["value"]["flow"] == "find_home"
+    assert requests["compare_saved"]["value"]["property_ids"] == ["DW-1003", "DW-1002"]
     assert "property_id" not in requests["new_chat"]["value"]
     assert requests["selected_property"]["value"]["property_id"] == "DW-1003"
     fields = list(spec["components"]["schemas"]["ChatRequest"]["properties"])
-    assert fields == ["message", "session_id", "property_id", "system_prompt"]
+    assert fields == ["message", "session_id", "property_id", "property_ids", "flow", "system_prompt"]
     assert (
         '"type": "sources"'
         in spec["paths"]["/v1/chat/stream"]["post"]["responses"]["200"]["content"]["text/event-stream"][
