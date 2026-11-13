@@ -8,6 +8,7 @@ the snapshot says so instead of estimating one.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable
 from datetime import date
 
@@ -63,6 +64,10 @@ MAX_WEB_YIELD_PERCENT = 12.0
 # Listings a price scope needs before the headline prefers it over a wider one.
 MIN_PRICE_SAMPLE = 3
 
+# Land listings say so in their category ("Plot/Land") or their title ("Plot
+# for Sale in Sector 9"); either is enough to rule a rental yield out.
+_LAND = re.compile(r"\b(?:plot|plots|land|agricultural|farmhouse plot)\b", re.IGNORECASE)
+
 DISCLAIMER = (
     "Estimates are based on available listings and locality data. Actual rent and property value may vary."
 )
@@ -101,6 +106,8 @@ class SnapshotService:
             return None
 
         is_rental = subject.transaction_type == "Rent"
+        # A plot has no building to let, so quoting it a rent would be fiction.
+        no_yield = _why_no_yield(subject, is_rental=is_rental)
         candidates = await self._finder.candidates(
             subject, transaction_type=subject.transaction_type or "Sale"
         )
@@ -109,9 +116,9 @@ class SnapshotService:
         rentals = peers if is_rental else await self._finder.find(subject, transaction_type="Rent")
 
         comparison = _price_comparison(subject, scopes)
-        rental_yield = await self._rental_yield(subject, rentals, is_rental=is_rental)
+        rental_yield = await self._rental_yield(subject, rentals, not_applicable=no_yield)
         trend = await self._locality_trend(subject)
-        confidence = _confidence(subject, comparison, rental_yield, trend, is_rental=is_rental)
+        confidence = _confidence(subject, comparison, rental_yield, trend, yield_applies=no_yield is None)
 
         return PropertySnapshot(
             property_id=subject.id,
@@ -143,15 +150,16 @@ class SnapshotService:
         return await self._search.sources(subject.locality, subject.city)
 
     async def _rental_yield(
-        self, subject: PropertyCard, rentals: list[Comparable], *, is_rental: bool
+        self, subject: PropertyCard, rentals: list[Comparable], *, not_applicable: str | None
     ) -> RentalYield:
-        """From comparable rentals when there are enough; else a quoted locality average."""
-        if is_rental:
+        """From comparable rentals when there are enough; else a quoted locality average.
+
+        `not_applicable` is the reason this kind of listing has no yield at all,
+        or None when it does.
+        """
+        if not_applicable is not None:
             return RentalYield(
-                available=False,
-                headline="Not applicable",
-                sample_size=0,
-                basis="Rental yield applies to a property you buy, not to a rental listing.",
+                available=False, headline="Not applicable", sample_size=0, basis=not_applicable
             )
         price = float(subject.price) if subject.price else None
         if not price:
@@ -444,22 +452,39 @@ def _rent_confidence(count: int) -> ConfidenceLevel:
     return "Low"
 
 
+def _why_no_yield(subject: PropertyCard, *, is_rental: bool) -> str | None:
+    """Why this listing has no rental yield, or None when it has one."""
+    if is_rental:
+        return "Rental yield applies to a property you buy, not to a rental listing."
+    if _is_land(subject):
+        return (
+            "This is a plot, which has no building to let, so rental yield doesn't apply. "
+            "Judge it on the price comparison and the locality trend instead."
+        )
+    return None
+
+
+def _is_land(subject: PropertyCard) -> bool:
+    """Whether the listing is land rather than something built on it."""
+    return bool(_LAND.search(f"{subject.category or ''} {subject.title or ''}"))
+
+
 def _confidence(
     subject: PropertyCard,
     comparison: PriceComparison,
     rental_yield: RentalYield,
     trend: LocalityTrend,
     *,
-    is_rental: bool,
+    yield_applies: bool,
 ) -> DataConfidence:
     """How far the card's figures can be trusted, from each figure's own confidence.
 
     Each figure scores High 3, Medium 2 or Low 1, averaged with CONFIDENCE_WEIGHTS:
-    2.5 or more is High, 1.75 or more Medium, anything lower Low. A rental
-    listing has no yield, so the other two weights are used alone.
+    2.5 or more is High, 1.75 or more Medium, anything lower Low. A listing with
+    no yield - a rental, or a plot - is scored on the other two weights alone.
     """
     factors = [_price_factor(comparison)]
-    if not is_rental:
+    if yield_applies:
         factors.append(_yield_factor(rental_yield))
     factors.append(_trend_factor(trend))
 

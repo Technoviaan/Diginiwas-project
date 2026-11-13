@@ -601,7 +601,11 @@ the same BHK in the locality, the whole locality, the same BHK in the city, the 
 whole city. `caption` names the set used.
 - **Rental yield** — a weighted median of comparable rentals (closer and more \
 recently listed ones count for more) × 12 ÷ price, gross and net. With fewer than \
-3 rentals, a locality's average rent quoted from web search.
+3 rentals, a locality's average rent quoted from web search. A plot and a rental \
+listing have no yield at all: both come back `available: false` with the headline \
+**"Not applicable"**, and are left out of data confidence. `headline` is always a \
+percentage range such as `"4.8%–5.4%"` — the rupee figure is \
+`estimated_monthly_rent`, the rent behind it, not the yield.
 - **Locality trend** — quoted from web search when a page states one; nothing \
 records price history yet.
 - **Data confidence** — each figure's own confidence, weighted 50% / 30% / 20% \
@@ -633,6 +637,14 @@ SNAPSHOT_EXAMPLES: dict[str, dict[str, Any]] = {
             "is no trend and no sources."
         ),
         "value": _example("snapshot_own_data.json"),
+    },
+    "plot": {
+        "summary": "A plot: no rental yield to report",
+        "description": (
+            "Land has no building to let, so rental_yield is 'Not applicable' and is left out of "
+            "data confidence. Show the headline text, not a number."
+        ),
+        "value": _example("snapshot_plot.json"),
     },
     "web_quoted": {
         "summary": "Sparse data: figures quoted from the web (DW-1003)",

@@ -62,7 +62,13 @@ def test_snapshot_examples_are_exactly_what_the_api_returns():
 def test_snapshot_is_documented_with_both_examples(spec):
     operation = spec["paths"]["/v1/properties/{property_id}/snapshot"]["get"]
     ok = operation["responses"]["200"]
-    assert sorted(ok["content"]["application/json"]["examples"]) == ["own_data", "web_quoted"]
+    assert sorted(ok["content"]["application/json"]["examples"]) == ["own_data", "plot", "web_quoted"]
+    plot = docs.SNAPSHOT_EXAMPLES["plot"]["value"]
+    assert plot["rental_yield"]["headline"] == "Not applicable"
+    assert [factor["figure"] for factor in plot["data_confidence"]["factors"]] == [
+        "price_comparison",
+        "locality_trend",
+    ]
     assert ok["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/PropertySnapshot"}
     assert "X-API-Version" in ok["headers"]
     assert "Card → field" in operation["description"]

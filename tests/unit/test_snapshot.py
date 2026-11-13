@@ -121,6 +121,44 @@ async def test_yield_does_not_apply_to_a_rental_listing():
     assert snapshot.rental_yield.headline == "Not applicable"
 
 
+async def test_yield_does_not_apply_to_a_plot():
+    # A plot has no building to let, so nearby rents say nothing about it.
+    plot = make_listing(SUBJECT_ID, category="Plot/Land", price=SUBJECT_PRICE, size=1100, bedrooms="")
+    listings = [plot] + [rental(f"DW-R{i}", 25_000) for i in range(5)]
+
+    snapshot = await snapshots_for(listings).for_listing(SUBJECT_ID)
+
+    assert snapshot.rental_yield.available is False
+    assert snapshot.rental_yield.headline == "Not applicable"
+    assert "no building to let" in snapshot.rental_yield.basis
+    assert snapshot.rental_yield.estimated_monthly_rent is None
+    # Scored on price and trend alone, as a rental listing is.
+    assert [factor.figure for factor in snapshot.data_confidence.factors] == [
+        "price_comparison",
+        "locality_trend",
+    ]
+
+
+async def test_a_plot_is_recognised_from_its_title_too():
+    # Listings whose category says Residential but whose title says plot.
+    plot = make_listing(SUBJECT_ID, price=SUBJECT_PRICE, size=1100)
+    plot["title"] = "Plot for Sale in Sector 9, Ambala"
+    listings = [plot] + [rental(f"DW-R{i}", 25_000) for i in range(5)]
+
+    snapshot = await snapshots_for(listings).for_listing(SUBJECT_ID)
+
+    assert snapshot.rental_yield.headline == "Not applicable"
+
+
+async def test_a_flat_still_gets_its_yield():
+    listings = [sale(SUBJECT_ID, SUBJECT_PRICE)] + [rental(f"DW-R{i}", 15_000) for i in range(3)]
+
+    snapshot = await snapshots_for(listings).for_listing(SUBJECT_ID)
+
+    assert snapshot.rental_yield.available is True
+    assert snapshot.rental_yield.gross_percent == 3.0
+
+
 async def test_locality_trend_is_always_unavailable_with_a_reason():
     snapshot = await snapshots_for([sale(SUBJECT_ID, SUBJECT_PRICE)]).for_listing(SUBJECT_ID)
     trend = snapshot.locality_trend

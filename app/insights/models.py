@@ -71,10 +71,22 @@ class RentalYield(BaseModel):
       when there are too few comparable rentals. Usually an average over every
       property type, so it carries `quote`, `source_url`, `rent_scope` and
       `confidence: "Low"`; show those with it.
+
+    Some listings have no yield to report. A plot has no building to let, and a
+    rental listing is already the rent: both come back `available: false` with
+    `headline: "Not applicable"` and the reason in `basis`. Show that headline
+    rather than a number, and never show `estimated_monthly_rent` as the yield.
     """
 
     available: bool = Field(..., description="False when no rent could be established.")
-    headline: str = Field(..., description="Ready to display: the gross yield range.", examples=["4.8%–5.4%"])
+    headline: str = Field(
+        ...,
+        description=(
+            "Ready to display: the gross yield range, or 'Not applicable' for a plot or a "
+            "rental listing, or 'Not enough data'. A percentage, never a rupee amount."
+        ),
+        examples=["4.8%–5.4%"],
+    )
     low_percent: float | None = Field(None, description="Gross yield at the lower end of typical rents.")
     high_percent: float | None = Field(None, description="Gross yield at the upper end of typical rents.")
     gross_percent: float | None = Field(None, description="Estimated monthly rent × 12 ÷ price × 100.")

@@ -1,0 +1,120 @@
+{
+  "property_id": "DW-2101",
+  "title": "Plot for Sale in Sector 9, Ambala",
+  "locality": "Sector 9",
+  "city": "Ambala",
+  "price": 9000000,
+  "price_label": "₹90 L",
+  "transaction_type": "Sale",
+  "price_comparison": {
+    "difference_percent": -11.8,
+    "direction": "below",
+    "headline": "12% below",
+    "caption": "similar homes within 3 km",
+    "listing_price_per_sqft": 30000,
+    "median_price_per_sqft": 34000,
+    "sample_size": 6,
+    "basis": "₹30,000 per sqft against a median of ₹34,000 across 6 comparable listings (similar homes within 3 km).",
+    "breakdown": [
+      {
+        "scope": "similar_nearby",
+        "label": "similar homes within 3 km",
+        "median_price_per_sqft": 34000,
+        "difference_percent": -11.8,
+        "direction": "below",
+        "sample_size": 6
+      }
+    ],
+    "confidence": "Medium"
+  },
+  "rental_yield": {
+    "available": false,
+    "headline": "Not applicable",
+    "low_percent": null,
+    "high_percent": null,
+    "gross_percent": null,
+    "net_percent": null,
+    "estimated_monthly_rent": null,
+    "estimated_annual_rent": null,
+    "annual_expenses": null,
+    "assumptions": [],
+    "sample_size": 0,
+    "rent_scope": null,
+    "basis": "This is a plot, which has no building to let, so rental yield doesn't apply. Judge it on the price comparison and the locality trend instead.",
+    "source": null,
+    "source_name": null,
+    "source_url": null,
+    "quote": null,
+    "confidence": null
+  },
+  "locality_trend": {
+    "available": false,
+    "yearly_percent": null,
+    "total_percent": null,
+    "years": null,
+    "headline": "Not available yet",
+    "caption": "Needs price history",
+    "reason": "Locality price history is not recorded yet, so a yearly trend cannot be measured from DigiNiwas listings.",
+    "source": null,
+    "source_name": null,
+    "source_url": null,
+    "quote": null,
+    "period": null,
+    "confidence": null
+  },
+  "data_confidence": {
+    "level": "Low",
+    "headline": "Low",
+    "caption": "6 comparable listings",
+    "comparable_listings": 6,
+    "score": 1.71,
+    "factors": [
+      {
+        "figure": "price_comparison",
+        "level": "Medium",
+        "weight": 0.5,
+        "reason": "Price comparison: 6 comparable listings (similar homes within 3 km)."
+      },
+      {
+        "figure": "locality_trend",
+        "level": "Low",
+        "weight": 0.2,
+        "reason": "Locality trend: not available yet."
+      }
+    ],
+    "reasons": [
+      "Price comparison: 6 comparable listings (similar homes within 3 km).",
+      "Locality trend: not available yet."
+    ]
+  },
+  "calculation": [
+    {
+      "title": "Comparable listings",
+      "detail": "Live, verified listings within 3 km of this one in Sector 9, with the same configuration and a similar size to 300 sq yd: 6 for sale, 0 on rent."
+    },
+    {
+      "title": "Price comparison",
+      "detail": "₹30,000 per sqft against a median of ₹34,000 across 6 comparable listings (similar homes within 3 km)."
+    },
+    {
+      "title": "Rental yield",
+      "detail": "This is a plot, which has no building to let, so rental yield doesn't apply. Judge it on the price comparison and the locality trend instead."
+    },
+    {
+      "title": "Outliers",
+      "detail": "Values far outside the middle half of the sample are dropped before the median is taken, so one mistyped listing cannot move the figures."
+    },
+    {
+      "title": "Locality trend",
+      "detail": "Locality price history is not recorded yet, so a yearly trend cannot be measured from DigiNiwas listings."
+    },
+    {
+      "title": "Data confidence",
+      "detail": "Each figure is rated High, Medium or Low by how much close, own-market data it rests on (price comparison Medium, locality trend Low). Scored 3, 2 and 1 and weighted 50% price comparison, 30% rental yield, 20% locality trend, they average 1.71 out of 3: 2.5 or more is High, 1.75 or more Medium, anything lower Low."
+    }
+  ],
+  "locality_sources": [],
+  "radius_km": 3.0,
+  "updated_on": "2026-11-13",
+  "disclaimer": "Estimates are based on available listings and locality data. Actual rent and property value may vary."
+}
