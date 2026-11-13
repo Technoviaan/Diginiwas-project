@@ -12,6 +12,11 @@ from app.properties.query import PropertyQuery
 
 logger = logging.getLogger(__name__)
 
+# How many listings to re-read when the API's own filters find nothing. Enough
+# to cover the whole catalogue today, and bounded so a growing one can't make
+# this call expensive.
+UNFILTERED_LIMIT = 100
+
 
 class PropertiesAPIError(Exception):
     """The API answered, but not with a usable listings response."""
@@ -39,9 +44,32 @@ class PropertiesClient:
     async def search(self, query: PropertyQuery, *, limit: int) -> PropertyPage:
         """One page of live, verified listings matching `query`.
 
+        An empty result is checked a second time against listings fetched
+        unfiltered: the API can't filter on fields newer listings keep in a
+        nested object, so it reports none where matches exist.
+
         Raises httpx.HTTPError for network and HTTP failures, and
         PropertiesAPIError for a response that isn't a listing page.
         """
+        page = await self._page(query, limit)
+        if page.cards or not query.has_filters:
+            return page
+        return await self._matched_here(query, limit)
+
+    async def _matched_here(self, query: PropertyQuery, limit: int) -> PropertyPage:
+        """Fetch a wide unfiltered page and apply the filters in code."""
+        wide = await self._page(PropertyQuery(page=query.page), UNFILTERED_LIMIT)
+        matched = [card for card in wide.cards if query.matches(card)]
+        if matched:
+            logger.info(
+                "The listings API returned none for %s; matched %d of %d here instead",
+                query.to_params(limit),
+                len(matched),
+                len(wide.cards),
+            )
+        return PropertyPage(cards=matched[:limit], total=len(matched), page=query.page, total_pages=1)
+
+    async def _page(self, query: PropertyQuery, limit: int) -> PropertyPage:
         response = await self._http.get("/api/properties", params=query.to_params(limit))
         response.raise_for_status()
         body = response.json()
